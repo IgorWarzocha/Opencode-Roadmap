@@ -1,6 +1,5 @@
 {
   "plugin": [
     "./.opencode/plugin/roadmap"
-  ],
-  "$schema": "https://opencode.ai/config.json"
+  ]
 }
