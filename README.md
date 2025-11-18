@@ -2,6 +2,76 @@
 
 Strategic roadmap planning and multi-agent coordination plugin for OpenCode. Provides project-wide planning capabilities that complement the session-specific TodoWrite tool.
 
+## 🚀 Quick Start (Manual Installation)
+
+> **⚠️ Important**: Until this plugin is properly packaged, you need to manually install it by copying files into your project. Follow these instructions **exactly** to avoid breaking your project.
+
+### Step 1: Copy Plugin Files
+
+Copy the **entire plugin source** to your project's `.opencode` directory:
+
+```bash
+# From THIS repository (the plugin source)
+# TO your target project directory
+
+# Copy the plugin source files
+cp -r /path/to/this/repo/src /path/to/your/project/.opencode/plugin/roadmap
+
+# Copy required config files
+cp /path/to/this/repo/package.json /path/to/your/project/.opencode/plugin/roadmap/
+cp /path/to/this/repo/tsconfig.json /path/to/your/project/.opencode/plugin/roadmap/
+```
+
+**What you're copying:**
+- ✅ `src/` - All TypeScript source files (the actual plugin)
+- ✅ `package.json` - Plugin dependencies and metadata  
+- ✅ `tsconfig.json` - TypeScript configuration
+
+### Step 2: Create OpenCode Configuration
+
+In your **project root**, create `opencode.json`:
+
+```json
+{
+  "plugin": [
+    "./.opencode/plugin/roadmap"
+  ]
+}
+```
+
+**⚠️ Critical Notes:**
+- The path `./.opencode/plugin/roadmap` is **relative to your project root**
+- Use **forward slashes** even on Windows
+- The path points to the **directory containing the plugin source**, not a specific file
+- OpenCode will automatically build the TypeScript files when it starts
+- Only copy the files shown above - don't copy `node_modules/` or `dist/` (they won't exist in the git repo)
+
+### Step 3: Verify Installation
+
+Run OpenCode in your project and test:
+
+```bash
+cd /path/to/your/project
+opencode run "list available roadmap tools"
+```
+
+You should see the three roadmap tools: `createroadmap`, `readroadmap`, and `updateroadmap`.
+
+### Step 4: Start Using
+
+```bash
+# Create a roadmap
+opencode run "create a roadmap for my web app project"
+
+# Read roadmap status  
+opencode run "show me the current roadmap"
+
+# Update progress
+opencode run "mark action 1.01 as completed"
+```
+
+---
+
 ## About OpenCode Plugins
 
 OpenCode plugins extend the AI coding agent with custom tools, hooks, and integrations. This plugin follows the OpenCode plugin architecture and provides three new tools for strategic project planning:
@@ -10,48 +80,15 @@ OpenCode plugins extend the AI coding agent with custom tools, hooks, and integr
 - **readroadmap** - View roadmap status and progress
 - **updateroadmap** - Update action status and descriptions
 
-## Installation
+## Installation (Future Package)
 
-### Option 1: Install from OpenCode Repository
-
-```bash
-# Clone the OpenCode repository
-git clone https://github.com/sst/opencode.git
-cd opencode/roadmap
-
-# Install dependencies and build
-npm install
-npm run build
-```
-
-Add to your OpenCode configuration (`~/.config/opencode/opencode.json` or project `opencode.json`):
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": ["file:///path/to/opencode/roadmap"]
-}
-```
-
-### Option 2: Development Installation
-
-For local development:
-
-```bash
-# Clone and setup
-git clone https://github.com/sst/opencode.git
-cd opencode/roadmap
-npm install
-npm run dev  # Watch mode for development
-```
-
-### Option 3: Global Installation (when published)
+When this plugin is properly packaged, installation will be:
 
 ```bash
 npm install -g opencode-roadmap-plugin
 ```
 
-Then add to config:
+Then add to your OpenCode configuration:
 
 ```json
 {
@@ -59,67 +96,7 @@ Then add to config:
 }
 ```
 
-## Quick Start
-
-Once installed and configured, the plugin provides three new tools:
-
-### 1. Create a New Roadmap
-
-```javascript
-createroadmap({
-  features: [
-    {
-      number: "1",
-      title: "User Authentication",
-      description: "Login and registration system",
-      actions: [
-        {
-          number: "1.01",
-          description: "Create login form with email/password fields",
-          status: "pending",
-        },
-        {
-          number: "1.02",
-          description: "Implement JWT token handling",
-          status: "pending",
-        },
-      ],
-    },
-  ],
-})
-```
-
-### 2. Read Roadmap Status
-
-```javascript
-// Read entire roadmap
-readroadmap({})
-
-// Read specific feature
-readroadmap({ featureNumber: "1" })
-
-// Read specific action
-readroadmap({ actionNumber: "1.01" })
-```
-
-### 3. Update Action Progress
-
-```javascript
-// Update status only
-updateroadmap({
-  actionNumber: "1.01",
-  status: "in_progress",
-})
-
-// Update both description and status
-updateroadmap({
-  actionNumber: "1.01",
-  description: "Create responsive login form with validation",
-  status: "completed",
-})
-```
-
-## Quick Start
+## Usage Examples
 
 Once installed, the plugin provides three new tools:
 
