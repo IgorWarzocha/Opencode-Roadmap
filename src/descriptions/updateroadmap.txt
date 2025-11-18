@@ -1,0 +1,20 @@
+Update action description or status in the roadmap. Can ONLY modify actions, never features. Allowed changes: action status (pending → in_progress → completed) and action description (full overwrite). Cannot add actions, modify features, or change numbers.
+
+Rules:
+- Only actions can be modified, features are immutable after creation
+- Action numbers cannot be changed
+- Status must follow progression: pending → in_progress → completed
+- Description changes completely overwrite existing description
+- Must specify action number (e.g., "1.01", "1.02", "2.01")
+
+Valid Status Transitions:
+- "pending" → "in_progress" or "completed"
+- "in_progress" → "completed"
+- "completed" → (no changes allowed)
+
+Examples:
+- Update status only: {"actionNumber": "1.01", "status": "in_progress"}
+- Update description only: {"actionNumber": "1.01", "description": "New description", "status": "pending"}
+- Update both: {"actionNumber": "1.01", "description": "Updated task", "status": "completed"}
+
+Use ReadRoadmap first to see current action numbers and statuses if unsure.

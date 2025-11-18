@@ -1,0 +1,50 @@
+{
+  "name": "opencode-roadmap-plugin",
+  "version": "1.0.0",
+  "description": "Strategic roadmap planning and multi-agent coordination for OpenCode",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "opencode",
+    "plugin",
+    "roadmap",
+    "planning",
+    "multi-agent"
+  ],
+  "author": "OpenCode Community",
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "opencode": {
+    "type": "plugin",
+    "tools": [
+      "createroadmap",
+      "updateroadmap",
+      "readroadmap"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sst/opencode",
+    "directory": "roadmap"
+  },
+  "bugs": {
+    "url": "https://github.com/sst/opencode/issues"
+  },
+  "homepage": "https://opencode.ai"
+}

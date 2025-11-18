@@ -1,0 +1,1 @@
+export { loadDescription } from "./loader";
