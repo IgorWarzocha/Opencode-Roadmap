@@ -1,1 +1,0 @@
-Invalid transition: "{from}" → "{to}". Allowed: {allowed}.
