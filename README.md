@@ -63,10 +63,13 @@ You should see the three roadmap tools: `createroadmap`, `readroadmap`, and `upd
 # Create a roadmap
 opencode run "create a roadmap for my web app project"
 
+# Append to it later
+opencode run "add a new feature for user settings to the roadmap"
+
 # Read roadmap status  
 opencode run "show me the current roadmap"
 
-# Update progress
+# Update progress (Auto-archives when all done)
 opencode run "mark action 1.01 as completed"
 ```
 
@@ -177,10 +180,14 @@ Actions follow strict status flow:
 - No backward transitions allowed
 
 ### Append-Only Creation
-
-- New features and actions can only be added to the end
+- New features and actions can be added to an existing roadmap using `createroadmap`
 - Existing features and actions cannot be modified (except action status/description)
 - Maintains roadmap integrity and prevents conflicts
+
+### Auto-Archive
+- When the last pending/in_progress action is marked as `completed`, the roadmap is automatically archived
+- The file is renamed to `roadmap.archive.<timestamp>.json`
+- You can immediately create a new roadmap for the next phase
 
 ## Multi-Agent Coordination
 
@@ -188,7 +195,7 @@ Actions follow strict status flow:
 
 1. Creates project roadmap with `CreateRoadmap` (initial setup only)
 2. Defines strategic features and actions with proper numbering
-3. Assigns tasks to subagents by updating action status to "in_progress"
+3. Assigns actions to subagents by updating action status to "in_progress"
 4. Monitors progress with `ReadRoadmap`
 5. Updates action status to "completed" as work is finished
 
@@ -203,9 +210,8 @@ Actions follow strict status flow:
 ## Tool Reference
 
 ### CreateRoadmap
-
-**Purpose**: Initialize project planning with features and actions
-**Usage**: Only when no roadmap exists
+**Purpose**: Initialize project planning OR append new features/actions
+**Usage**: Create new or extend existing
 **Constraints**: Append-only creation, proper numbering required
 
 ### UpdateRoadmap
@@ -264,8 +270,7 @@ Use both together:
 ## Troubleshooting
 
 ### "Roadmap already exists"
-
-The plugin prevents overwriting existing roadmaps. Archive the current `roadmap.json` file manually before creating a new one.
+This error only occurs if you try to create a *new* roadmap structure that conflicts with the existing one without following append-only rules, or if the file is locked. However, `createroadmap` now supports appending, so you should simply add your new features to the input.
 
 ### "Invalid action number"
 

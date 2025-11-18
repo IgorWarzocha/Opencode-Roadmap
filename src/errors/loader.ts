@@ -7,7 +7,7 @@ export async function loadErrorTemplate(filename: string): Promise<string> {
   if (ERROR_CACHE[filename]) return ERROR_CACHE[filename]
 
   const errorsDir = join(__dirname, "..", "..", "src", "errors")
-  const filePath = join(errorsDir, filename)
+  const filePath = join(errorsDir, filename + ".txt")
   
   try {
     const content = await fs.readFile(filePath, "utf-8")

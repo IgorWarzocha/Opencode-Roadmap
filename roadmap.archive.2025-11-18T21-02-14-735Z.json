@@ -1,0 +1,114 @@
+{
+  "features": [
+    {
+      "number": "1",
+      "title": "Core CLI Framework",
+      "description": "Set up basic Rust CLI structure with argument parsing and configuration management",
+      "actions": [
+        {
+          "number": "1.01",
+          "description": "Initialize Rust project with Cargo.toml and basic dependencies (clap, serde, tokio)",
+          "status": "completed"
+        },
+        {
+          "number": "1.02",
+          "description": "Create main CLI entry point with command structure and help system",
+          "status": "completed"
+        },
+        {
+          "number": "1.03",
+          "description": "Implement configuration file handling for email credentials and settings",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "Email Connection & Authentication",
+      "description": "Establish secure connections to email servers using IMAP/SMTP protocols",
+      "actions": [
+        {
+          "number": "2.01",
+          "description": "Add IMAP client library and implement basic connection functionality",
+          "status": "completed"
+        },
+        {
+          "number": "2.02",
+          "description": "Implement secure authentication with OAuth2 or app passwords",
+          "status": "completed"
+        },
+        {
+          "number": "2.03",
+          "description": "Add connection error handling and retry logic",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Basic Email Operations",
+      "description": "Implement core email reading and listing functionality",
+      "actions": [
+        {
+          "number": "3.01",
+          "description": "Create inbox listing command with message count and basic metadata",
+          "status": "completed"
+        },
+        {
+          "number": "3.02",
+          "description": "Implement email reading functionality with proper formatting",
+          "status": "completed"
+        },
+        {
+          "number": "3.03",
+          "description": "Add email search and filtering capabilities",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Email Management",
+      "description": "Add email manipulation features like marking, moving, and deleting",
+      "actions": [
+        {
+          "number": "4.01",
+          "description": "Implement mark as read/unread functionality",
+          "status": "completed"
+        },
+        {
+          "number": "4.02",
+          "description": "Add email deletion with trash folder support",
+          "status": "completed"
+        },
+        {
+          "number": "4.03",
+          "description": "Create folder/label management system",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Sending & Composing",
+      "description": "Enable email composition and sending capabilities",
+      "actions": [
+        {
+          "number": "5.01",
+          "description": "Implement SMTP client for sending emails",
+          "status": "completed"
+        },
+        {
+          "number": "5.02",
+          "description": "Create email composition interface with templates",
+          "status": "completed"
+        },
+        {
+          "number": "5.03",
+          "description": "Add attachment support for outgoing emails",
+          "status": "completed"
+        }
+      ]
+    }
+  ]
+}
