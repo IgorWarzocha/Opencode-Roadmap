@@ -1,19 +1,2 @@
-Read project roadmap and see current status of features and actions. Use this to understand project context and track progress. No side effects.
-
-Usage Options:
-1. Read entire roadmap (no arguments) - Shows all features and actions
-2. Read specific feature (featureNumber only) - Shows feature and all its actions  
-3. Read specific action (actionNumber only) - Shows single action details
-
-Examples:
-- Read everything: {}
-- Read feature 1: {"featureNumber": "1"}
-- Read action 1.01: {"actionNumber": "1.01"}
-
-Output includes:
-- Feature titles and descriptions
-- Action descriptions and current statuses
-- Progress summary (completed/pending/in_progress counts)
-- Action numbers for reference with UpdateRoadmap
-
-Use this before UpdateRoadmap to get correct action numbers and current statuses.
+Retrieve current roadmap state, progress, and details.
+Filter: Provide 'featureNumber' or 'actionNumber' for specific details, or omit to read entire roadmap.

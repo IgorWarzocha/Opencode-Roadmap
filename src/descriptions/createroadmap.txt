@@ -1,36 +1,19 @@
-Create a new project roadmap OR append to an existing one. Use this tool to initialize project planning or add new features/actions later. Supports append-only additions: new features (e.g., '4') and new actions (e.g., '2.04'). Actions are numbered with two decimals: '1.01', '1.02', '2.01', '2.02', etc.
+Initialize or append to project roadmap. Supports adding new features and actions to existing roadmaps.
 
-Usage:
-- If NO roadmap exists: Creates a new one.
-- If roadmap EXISTS: Appends new features/actions.
-- STRICT VALIDATION: Action numbers MUST match their feature (e.g. Action "1.05" must be in Feature "1").
-
-Roadmap Structure:
-- Features: Major project components (numbered "1", "2", "3...")
-- Actions: Specific work items within features (numbered "1.01", "1.02", "2.01"...)
-
-Rules:
-- All numbers must be strings
-- Feature numbers: "1", "2", "3" (simple integers)
-- Action numbers: "1.01", "1.02", "2.01" (feature.action with two decimals)
-- All actions must start with "pending" status
-- New items must be sequential (append to end)
-- No duplicate numbers allowed
-- Cannot modify existing items (use UpdateRoadmap for status/description)
+Constraints:
+1. Append-only: New IDs must follow sequence (Feature 1->2, Action 1.01->1.02).
+2. ID Format: Feature "1", Action "1.01".
+3. Validation: Action prefix MUST match Feature (Action "1.01" belongs to Feature "1").
+4. Immutability: Cannot modify existing items.
+5. Status: Must be "pending".
 
 Example:
 {
   "features": [
     {
-      "number": "1",
-      "title": "User Authentication",
-      "description": "Login and registration system",
+      "number": "1", "title": "Auth", "description": "System setup",
       "actions": [
-        {
-          "number": "1.01",
-          "description": "Create login form with email/password fields",
-          "status": "pending"
-        }
+        { "number": "1.01", "description": "DB Init", "status": "pending" }
       ]
     }
   ]
