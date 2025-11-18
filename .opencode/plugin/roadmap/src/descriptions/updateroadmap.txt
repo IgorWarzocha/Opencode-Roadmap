@@ -1,0 +1,8 @@
+Update action status or description.
+
+Constraints:
+1. Forward-only status: pending → in_progress → completed.
+2. Immutable IDs: Cannot change action numbers or move actions.
+3. Side Effect: Automatically archives roadmap file when ALL actions are completed.
+
+Input: actionNumber (required), status (optional), description (optional).

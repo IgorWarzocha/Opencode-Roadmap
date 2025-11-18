@@ -1,0 +1,20 @@
+Initialize or append to project roadmap. Supports adding new features and actions.
+
+Constraints:
+1. Descriptions: MUST be detailed, clear, and actionable (unlike the minimal example below).
+2. Append-only: New IDs must follow sequence (Feature 1->2, Action 1.01->1.02).
+3. ID Format: Feature "1", Action "1.01".
+4. Validation: Action prefix MUST match Feature (Action "1.01" belongs to Feature "1").
+5. Status: Must be "pending".
+
+Example:
+{
+  "features": [
+    {
+      "number": "1", "title": "Auth", "description": "User authentication system setup",
+      "actions": [
+        { "number": "1.01", "description": "Initialize PostgreSQL database schema with users table and indexes", "status": "pending" }
+      ]
+    }
+  ]
+}

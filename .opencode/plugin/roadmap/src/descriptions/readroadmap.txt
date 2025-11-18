@@ -1,0 +1,2 @@
+Retrieve current roadmap state, progress, and details.
+Filter: Provide 'featureNumber' or 'actionNumber' for specific details, or omit to read entire roadmap.
