@@ -74,7 +74,24 @@ export async function createUpdateRoadmapTool(directory) {
             if (args.status !== undefined && oldStatus !== args.status) {
                 changes.push(`status: "${oldStatus}" → "${args.status}"`);
             }
-            return `Updated action ${args.actionNumber} in feature "${targetFeature.title}": ${changes.join(", ")}`;
+            // Check if all actions are completed
+            let allCompleted = true;
+            for (const feature of roadmap.features) {
+                for (const action of feature.actions) {
+                    if (action.status !== "completed") {
+                        allCompleted = false;
+                        break;
+                    }
+                }
+                if (!allCompleted)
+                    break;
+            }
+            let archiveMsg = "";
+            if (allCompleted) {
+                const archiveName = await storage.archive();
+                archiveMsg = `\n\n🎉 All actions completed! Roadmap archived to "${archiveName}".`;
+            }
+            return `Updated action ${args.actionNumber} in feature "${targetFeature.title}": ${changes.join(", ")}${archiveMsg}`;
         },
     });
 }

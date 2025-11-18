@@ -59,6 +59,14 @@ export class FileStorage {
             throw error;
         }
     }
+    async archive() {
+        const filePath = join(this.directory, ROADMAP_FILE);
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const archiveFilename = `roadmap.archive.${timestamp}.json`;
+        const archivePath = join(this.directory, archiveFilename);
+        await fs.rename(filePath, archivePath);
+        return archiveFilename;
+    }
 }
 export class RoadmapValidator {
     static validateFeatureNumber(number) {

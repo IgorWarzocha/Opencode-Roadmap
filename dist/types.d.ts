@@ -117,6 +117,7 @@ export interface RoadmapStorage {
     read(): Promise<Roadmap | null>;
     write(roadmap: Roadmap): Promise<void>;
     exists(): Promise<boolean>;
+    archive(): Promise<string>;
 }
 export interface ValidationError {
     code: string;

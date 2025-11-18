@@ -5,6 +5,7 @@ export declare class FileStorage implements RoadmapStorage {
     exists(): Promise<boolean>;
     read(): Promise<Roadmap | null>;
     write(roadmap: Roadmap): Promise<void>;
+    archive(): Promise<string>;
 }
 export declare class RoadmapValidator {
     static validateFeatureNumber(number: string): ValidationError | null;
