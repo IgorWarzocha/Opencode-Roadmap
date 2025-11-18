@@ -31,12 +31,27 @@ export async function createCreateRoadmapTool(directory) {
             if (!args.features || args.features.length === 0) {
                 throw new Error('Roadmap must have at least one feature with at least one action. Example: {"features": [{"number": "1", "title": "Feature 1", "description": "Description", "actions": [{"number": "1.01", "description": "Action 1", "status": "pending"}]}]}');
             }
+            const validationErrors = [];
             for (const feature of args.features) {
                 if (!feature.actions || feature.actions.length === 0) {
                     throw new Error(`Feature "${feature.number}" must have at least one action. Each feature needs at least one action to be valid.`);
                 }
+                // Validate feature title and description
+                const titleError = RoadmapValidator.validateTitle(feature.title, "feature");
+                if (titleError)
+                    validationErrors.push(titleError);
+                const descError = RoadmapValidator.validateDescription(feature.description, "feature");
+                if (descError)
+                    validationErrors.push(descError);
+                // Validate actions
+                for (const action of feature.actions) {
+                    const actionTitleError = RoadmapValidator.validateTitle(action.description, "action");
+                    if (actionTitleError)
+                        validationErrors.push(actionTitleError);
+                }
             }
-            const validationErrors = RoadmapValidator.validateFeatureSequence(args.features);
+            const sequenceErrors = RoadmapValidator.validateFeatureSequence(args.features);
+            validationErrors.push(...sequenceErrors);
             if (validationErrors.length > 0) {
                 const errorMessages = validationErrors.map((err) => err.message).join("\n");
                 throw new Error(`Validation errors:\n${errorMessages}\n\nPlease fix these issues and try again.`);

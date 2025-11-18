@@ -11,12 +11,14 @@ export declare class RoadmapValidator {
     static validateActionNumber(number: string): ValidationError | null;
     static validateActionSequence(actions: Array<{
         number: string;
-    }>): ValidationError[];
+    }>, globalSeenNumbers?: Set<string>, featureNumber?: string): ValidationError[];
     static validateFeatureSequence(features: Array<{
         number: string;
         actions: Array<{
             number: string;
         }>;
     }>): ValidationError[];
+    static validateTitle(title: string, fieldType: "feature" | "action"): ValidationError | null;
+    static validateDescription(description: string, fieldType: "feature" | "action"): ValidationError | null;
     static validateStatusProgression(currentStatus: string, newStatus: string): ValidationError | null;
 }

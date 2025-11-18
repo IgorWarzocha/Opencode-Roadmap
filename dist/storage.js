@@ -91,7 +91,7 @@ export class RoadmapValidator {
         }
         return null;
     }
-    static validateActionSequence(actions) {
+    static validateActionSequence(actions, globalSeenNumbers, featureNumber) {
         const errors = [];
         const seenNumbers = new Set();
         for (let i = 0; i < actions.length; i++) {
@@ -101,19 +101,39 @@ export class RoadmapValidator {
                 errors.push(numberError);
                 continue;
             }
+            // Check action-feature mismatch
+            if (featureNumber) {
+                const actionFeaturePrefix = action.number.split('.')[0];
+                if (actionFeaturePrefix !== featureNumber) {
+                    errors.push({
+                        code: "ACTION_FEATURE_MISMATCH",
+                        message: `Action number "${action.number}" does not match feature number "${featureNumber}". Action numbers must start with their feature number (e.g., action "${featureNumber}.01" for feature "${featureNumber}").`,
+                    });
+                }
+            }
+            // Check for duplicates within this feature
             if (seenNumbers.has(action.number)) {
                 errors.push({
                     code: "DUPLICATE_ACTION_NUMBER",
                     message: `Duplicate action number "${action.number}". Each action number must be unique within the roadmap.`,
                 });
             }
+            // Check for global duplicates
+            if (globalSeenNumbers?.has(action.number)) {
+                errors.push({
+                    code: "DUPLICATE_ACTION_NUMBER_GLOBAL",
+                    message: `Action number "${action.number}" already exists in another feature. Each action number must be unique across all features.`,
+                });
+            }
             seenNumbers.add(action.number);
+            globalSeenNumbers?.add(action.number);
         }
         return errors;
     }
     static validateFeatureSequence(features) {
         const errors = [];
         const seenNumbers = new Set();
+        const seenActionNumbers = new Set();
         for (let i = 0; i < features.length; i++) {
             const feature = features[i];
             const numberError = this.validateFeatureNumber(feature.number);
@@ -128,10 +148,40 @@ export class RoadmapValidator {
                 });
             }
             seenNumbers.add(feature.number);
-            const actionErrors = this.validateActionSequence(feature.actions);
+            const actionErrors = this.validateActionSequence(feature.actions, seenActionNumbers, feature.number);
             errors.push(...actionErrors);
         }
         return errors;
+    }
+    static validateTitle(title, fieldType) {
+        if (!title || typeof title !== "string") {
+            return {
+                code: "INVALID_TITLE",
+                message: `Invalid ${fieldType} title. Title must be a non-empty string.`,
+            };
+        }
+        if (title.trim() === "") {
+            return {
+                code: "EMPTY_TITLE",
+                message: `${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} title cannot be empty or just whitespace.`,
+            };
+        }
+        return null;
+    }
+    static validateDescription(description, fieldType) {
+        if (!description || typeof description !== "string") {
+            return {
+                code: "INVALID_DESCRIPTION",
+                message: `Invalid ${fieldType} description. Description must be a non-empty string.`,
+            };
+        }
+        if (description.trim() === "") {
+            return {
+                code: "EMPTY_DESCRIPTION",
+                message: `${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} description cannot be empty or just whitespace.`,
+            };
+        }
+        return null;
     }
     static validateStatusProgression(currentStatus, newStatus) {
         const statusFlow = {

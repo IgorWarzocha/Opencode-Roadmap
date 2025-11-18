@@ -43,15 +43,31 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
         )
       }
 
+      const validationErrors: any[] = []
+
       for (const feature of args.features) {
         if (!feature.actions || feature.actions.length === 0) {
           throw new Error(
             `Feature "${feature.number}" must have at least one action. Each feature needs at least one action to be valid.`,
           )
         }
+
+        // Validate feature title and description
+        const titleError = RoadmapValidator.validateTitle(feature.title, "feature")
+        if (titleError) validationErrors.push(titleError)
+
+        const descError = RoadmapValidator.validateDescription(feature.description, "feature")
+        if (descError) validationErrors.push(descError)
+
+        // Validate actions
+        for (const action of feature.actions) {
+          const actionTitleError = RoadmapValidator.validateTitle(action.description, "action")
+          if (actionTitleError) validationErrors.push(actionTitleError)
+        }
       }
 
-      const validationErrors = RoadmapValidator.validateFeatureSequence(args.features)
+      const sequenceErrors = RoadmapValidator.validateFeatureSequence(args.features)
+      validationErrors.push(...sequenceErrors)
 
       if (validationErrors.length > 0) {
         const errorMessages = validationErrors.map((err) => err.message).join("\n")

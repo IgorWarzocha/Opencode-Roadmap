@@ -11,7 +11,10 @@ export async function createUpdateRoadmapTool(directory) {
                 .string()
                 .optional()
                 .describe("New action description (full overwrite). If not provided, only status is updated."),
-            status: tool.schema.enum(["pending", "in_progress", "completed"]).describe("New action status - required"),
+            status: tool.schema
+                .enum(["pending", "in_progress", "completed"])
+                .optional()
+                .describe("New action status - optional if only updating description"),
         },
         async execute(args) {
             const storage = new FileStorage(directory);
@@ -41,22 +44,34 @@ export async function createUpdateRoadmapTool(directory) {
             if (!actionFound) {
                 throw new Error(`Action "${args.actionNumber}" not found. Use ReadRoadmap to see available action numbers.`);
             }
-            const statusTransitionError = RoadmapValidator.validateStatusProgression(targetAction.status, args.status);
-            if (statusTransitionError) {
-                throw new Error(`${statusTransitionError.message} Current status: "${targetAction.status}", requested: "${args.status}"`);
+            // Validate that at least one field is being updated
+            if (args.description === undefined && args.status === undefined) {
+                throw new Error("No changes specified. Provide either a description, status, or both to update the action.");
             }
             const oldStatus = targetAction.status;
             const oldDescription = targetAction.description;
+            // Validate description if provided
             if (args.description !== undefined) {
+                const descError = RoadmapValidator.validateDescription(args.description, "action");
+                if (descError) {
+                    throw new Error(`${descError.message}`);
+                }
                 targetAction.description = args.description;
             }
-            targetAction.status = args.status;
+            // Validate and update status if provided
+            if (args.status !== undefined) {
+                const statusTransitionError = RoadmapValidator.validateStatusProgression(targetAction.status, args.status);
+                if (statusTransitionError) {
+                    throw new Error(`${statusTransitionError.message} Current status: "${targetAction.status}", requested: "${args.status}"`);
+                }
+                targetAction.status = args.status;
+            }
             await storage.write(roadmap);
             const changes = [];
             if (args.description !== undefined && oldDescription !== args.description) {
                 changes.push(`description updated`);
             }
-            if (oldStatus !== args.status) {
+            if (args.status !== undefined && oldStatus !== args.status) {
                 changes.push(`status: "${oldStatus}" → "${args.status}"`);
             }
             return `Updated action ${args.actionNumber} in feature "${targetFeature.title}": ${changes.join(", ")}`;

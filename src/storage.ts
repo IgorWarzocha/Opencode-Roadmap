@@ -103,7 +103,11 @@ export class RoadmapValidator {
     return null
   }
 
-  static validateActionSequence(actions: Array<{ number: string }>): ValidationError[] {
+  static validateActionSequence(
+    actions: Array<{ number: string }>, 
+    globalSeenNumbers?: Set<string>,
+    featureNumber?: string
+  ): ValidationError[] {
     const errors: ValidationError[] = []
     const seenNumbers = new Set<string>()
 
@@ -116,6 +120,18 @@ export class RoadmapValidator {
         continue
       }
 
+      // Check action-feature mismatch
+      if (featureNumber) {
+        const actionFeaturePrefix = action.number.split('.')[0]
+        if (actionFeaturePrefix !== featureNumber) {
+          errors.push({
+            code: "ACTION_FEATURE_MISMATCH",
+            message: `Action number "${action.number}" does not match feature number "${featureNumber}". Action numbers must start with their feature number (e.g., action "${featureNumber}.01" for feature "${featureNumber}").`,
+          })
+        }
+      }
+
+      // Check for duplicates within this feature
       if (seenNumbers.has(action.number)) {
         errors.push({
           code: "DUPLICATE_ACTION_NUMBER",
@@ -123,7 +139,16 @@ export class RoadmapValidator {
         })
       }
 
+      // Check for global duplicates
+      if (globalSeenNumbers?.has(action.number)) {
+        errors.push({
+          code: "DUPLICATE_ACTION_NUMBER_GLOBAL",
+          message: `Action number "${action.number}" already exists in another feature. Each action number must be unique across all features.`,
+        })
+      }
+
       seenNumbers.add(action.number)
+      globalSeenNumbers?.add(action.number)
     }
 
     return errors
@@ -134,6 +159,7 @@ export class RoadmapValidator {
   ): ValidationError[] {
     const errors: ValidationError[] = []
     const seenNumbers = new Set<string>()
+    const seenActionNumbers = new Set<string>()
 
     for (let i = 0; i < features.length; i++) {
       const feature = features[i]
@@ -153,11 +179,47 @@ export class RoadmapValidator {
 
       seenNumbers.add(feature.number)
 
-      const actionErrors = this.validateActionSequence(feature.actions)
+      const actionErrors = this.validateActionSequence(feature.actions, seenActionNumbers, feature.number)
       errors.push(...actionErrors)
     }
 
     return errors
+  }
+
+  static validateTitle(title: string, fieldType: "feature" | "action"): ValidationError | null {
+    if (!title || typeof title !== "string") {
+      return {
+        code: "INVALID_TITLE",
+        message: `Invalid ${fieldType} title. Title must be a non-empty string.`,
+      }
+    }
+
+    if (title.trim() === "") {
+      return {
+        code: "EMPTY_TITLE",
+        message: `${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} title cannot be empty or just whitespace.`,
+      }
+    }
+
+    return null
+  }
+
+  static validateDescription(description: string, fieldType: "feature" | "action"): ValidationError | null {
+    if (!description || typeof description !== "string") {
+      return {
+        code: "INVALID_DESCRIPTION",
+        message: `Invalid ${fieldType} description. Description must be a non-empty string.`,
+      }
+    }
+
+    if (description.trim() === "") {
+      return {
+        code: "EMPTY_DESCRIPTION",
+        message: `${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} description cannot be empty or just whitespace.`,
+      }
+    }
+
+    return null
   }
 
   static validateStatusProgression(currentStatus: string, newStatus: string): ValidationError | null {
