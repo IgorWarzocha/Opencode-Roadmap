@@ -111,7 +111,19 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         archiveMsg = `\n\n🎉 All actions completed! Roadmap archived to "${archiveName}".`
       }
 
-      return `Updated action ${args.actionNumber} in feature "${targetFeature.title}": ${changes.join(", ")}${archiveMsg}`
+      // Format feature context
+      const featureCompleted = targetFeature.actions.filter((a: any) => a.status === "completed").length
+      const featureTotal = targetFeature.actions.length
+      
+      let featureContext = `\n\nFeature ${targetFeature.number}: ${targetFeature.title} (${featureCompleted}/${featureTotal} complete)\n`
+      featureContext += `Description: ${targetFeature.description}\n`
+      
+      for (const action of targetFeature.actions) {
+        const statusIcon = action.status === "completed" ? "✓" : action.status === "in_progress" ? "→" : "○"
+        featureContext += `${action.number} ${statusIcon} ${action.description} [${action.status}]\n`
+      }
+
+      return `Updated action ${args.actionNumber} in feature "${targetFeature.title}": ${changes.join(", ")}${featureContext}${archiveMsg}`
     },
   })
 }
