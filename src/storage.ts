@@ -1,6 +1,7 @@
 import { promises as fs } from "fs"
 import { join } from "path"
 import type { Roadmap, RoadmapStorage, ValidationError } from "./types"
+import { getErrorMessage } from "./errors/loader"
 
 const ROADMAP_FILE = "roadmap.json"
 
@@ -77,53 +78,53 @@ export class FileStorage implements RoadmapStorage {
 }
 
 export class RoadmapValidator {
-  static validateFeatureNumber(number: string): ValidationError | null {
+  static async validateFeatureNumber(number: string): Promise<ValidationError | null> {
     if (!number || typeof number !== "string") {
       return {
         code: "INVALID_FEATURE_NUMBER",
-        message: "Invalid feature number. Feature numbers must be strings like '1', '2', '3'.",
+        message: await getErrorMessage("invalid_feature_id", { id: "undefined" }),
       }
     }
 
     if (!/^\d+$/.test(number)) {
       return {
         code: "INVALID_FEATURE_NUMBER_FORMAT",
-        message: `Invalid feature number "${number}". Feature numbers must be simple integers as strings (e.g., '1', '2', '3').`,
+        message: await getErrorMessage("invalid_feature_id", { id: number }),
       }
     }
 
     return null
   }
 
-  static validateActionNumber(number: string): ValidationError | null {
+  static async validateActionNumber(number: string): Promise<ValidationError | null> {
     if (!number || typeof number !== "string") {
       return {
         code: "INVALID_ACTION_NUMBER",
-        message: "Invalid action number. Action numbers must be strings like '1.01', '1.02', '2.01'.",
+        message: await getErrorMessage("invalid_action_id", { id: "undefined" }),
       }
     }
 
     if (!/^\d+\.\d{2}$/.test(number)) {
       return {
         code: "INVALID_ACTION_NUMBER_FORMAT",
-        message: `Invalid action number "${number}". Action numbers must follow the format 'X.YY' where X is the feature number and YY is a two-digit action number (e.g., '1.01', '1.02', '2.01').`,
+        message: await getErrorMessage("invalid_action_id", { id: number }),
       }
     }
 
     return null
   }
 
-  static validateActionSequence(
+  static async validateActionSequence(
     actions: Array<{ number: string }>, 
     globalSeenNumbers?: Set<string>,
     featureNumber?: string
-  ): ValidationError[] {
+  ): Promise<ValidationError[]> {
     const errors: ValidationError[] = []
     const seenNumbers = new Set<string>()
 
     for (let i = 0; i < actions.length; i++) {
       const action = actions[i]
-      const numberError = this.validateActionNumber(action.number)
+      const numberError = await this.validateActionNumber(action.number)
 
       if (numberError) {
         errors.push(numberError)
@@ -136,7 +137,7 @@ export class RoadmapValidator {
         if (actionFeaturePrefix !== featureNumber) {
           errors.push({
             code: "ACTION_FEATURE_MISMATCH",
-            message: `Action number "${action.number}" does not match feature number "${featureNumber}". Action numbers must start with their feature number (e.g., action "${featureNumber}.01" for feature "${featureNumber}").`,
+            message: await getErrorMessage("action_mismatch", { action: action.number, feature: featureNumber }),
           })
         }
       }
@@ -145,7 +146,7 @@ export class RoadmapValidator {
       if (seenNumbers.has(action.number)) {
         errors.push({
           code: "DUPLICATE_ACTION_NUMBER",
-          message: `Duplicate action number "${action.number}". Each action number must be unique within the roadmap.`,
+          message: `Duplicate action ID "${action.number}".`,
         })
       }
 
@@ -153,7 +154,7 @@ export class RoadmapValidator {
       if (globalSeenNumbers?.has(action.number)) {
         errors.push({
           code: "DUPLICATE_ACTION_NUMBER_GLOBAL",
-          message: `Action number "${action.number}" already exists in another feature. Each action number must be unique across all features.`,
+          message: `Duplicate action ID "${action.number}" (exists in another feature).`,
         })
       }
 
@@ -164,16 +165,16 @@ export class RoadmapValidator {
     return errors
   }
 
-  static validateFeatureSequence(
+  static async validateFeatureSequence(
     features: Array<{ number: string; actions: Array<{ number: string }> }>,
-  ): ValidationError[] {
+  ): Promise<ValidationError[]> {
     const errors: ValidationError[] = []
     const seenNumbers = new Set<string>()
     const seenActionNumbers = new Set<string>()
 
     for (let i = 0; i < features.length; i++) {
       const feature = features[i]
-      const numberError = this.validateFeatureNumber(feature.number)
+      const numberError = await this.validateFeatureNumber(feature.number)
 
       if (numberError) {
         errors.push(numberError)
@@ -183,56 +184,56 @@ export class RoadmapValidator {
       if (seenNumbers.has(feature.number)) {
         errors.push({
           code: "DUPLICATE_FEATURE_NUMBER",
-          message: `Duplicate feature number "${feature.number}". Each feature number must be unique within the roadmap.`,
+          message: `Duplicate feature ID "${feature.number}".`,
         })
       }
 
       seenNumbers.add(feature.number)
 
-      const actionErrors = this.validateActionSequence(feature.actions, seenActionNumbers, feature.number)
+      const actionErrors = await this.validateActionSequence(feature.actions, seenActionNumbers, feature.number)
       errors.push(...actionErrors)
     }
 
     return errors
   }
 
-  static validateTitle(title: string, fieldType: "feature" | "action"): ValidationError | null {
+  static async validateTitle(title: string, fieldType: "feature" | "action"): Promise<ValidationError | null> {
     if (!title || typeof title !== "string") {
       return {
         code: "INVALID_TITLE",
-        message: `Invalid ${fieldType} title. Title must be a non-empty string.`,
+        message: `Invalid ${fieldType} title. Must be non-empty string.`,
       }
     }
 
     if (title.trim() === "") {
       return {
         code: "EMPTY_TITLE",
-        message: `${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} title cannot be empty or just whitespace.`,
+        message: `${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} title cannot be empty.`,
       }
     }
 
     return null
   }
 
-  static validateDescription(description: string, fieldType: "feature" | "action"): ValidationError | null {
+  static async validateDescription(description: string, fieldType: "feature" | "action"): Promise<ValidationError | null> {
     if (!description || typeof description !== "string") {
       return {
         code: "INVALID_DESCRIPTION",
-        message: `Invalid ${fieldType} description. Description must be a non-empty string.`,
+        message: `Invalid ${fieldType} description. Must be non-empty string.`,
       }
     }
 
     if (description.trim() === "") {
       return {
         code: "EMPTY_DESCRIPTION",
-        message: `${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} description cannot be empty or just whitespace.`,
+        message: `${fieldType.charAt(0).toUpperCase() + fieldType.slice(1)} description cannot be empty.`,
       }
     }
 
     return null
   }
 
-  static validateStatusProgression(currentStatus: string, newStatus: string): ValidationError | null {
+  static async validateStatusProgression(currentStatus: string, newStatus: string): Promise<ValidationError | null> {
     const statusFlow = {
       pending: ["in_progress", "completed"],
       in_progress: ["completed"],
@@ -244,7 +245,11 @@ export class RoadmapValidator {
     if (!(allowedTransitions as string[]).includes(newStatus)) {
       return {
         code: "INVALID_STATUS_TRANSITION",
-        message: `Invalid status transition from "${currentStatus}" to "${newStatus}". Valid transitions: ${allowedTransitions.map((s) => `"${currentStatus}" → "${s}"`).join(", ") || `No transitions allowed from "${currentStatus}"`}`,
+        message: await getErrorMessage("invalid_transition", { 
+            from: currentStatus, 
+            to: newStatus, 
+            allowed: allowedTransitions.length > 0 ? allowedTransitions.join(", ") : "None (terminal state)" 
+        }),
       }
     }
 

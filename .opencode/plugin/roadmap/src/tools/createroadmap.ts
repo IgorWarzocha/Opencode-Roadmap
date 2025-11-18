@@ -2,6 +2,7 @@ import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import { FileStorage, RoadmapValidator } from "../storage"
 import { Roadmap } from "../types"
 import { loadDescription } from "../descriptions"
+import { getErrorMessage } from "../errors/loader"
 
 export async function createCreateRoadmapTool(directory: string): Promise<ToolDefinition> {
   const description = await loadDescription("createroadmap.txt")
@@ -62,20 +63,20 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
           )
         }
 
-        const titleError = RoadmapValidator.validateTitle(feature.title, "feature")
+        const titleError = await RoadmapValidator.validateTitle(feature.title, "feature")
         if (titleError) validationErrors.push(titleError)
 
-        const descError = RoadmapValidator.validateDescription(feature.description, "feature")
+        const descError = await RoadmapValidator.validateDescription(feature.description, "feature")
         if (descError) validationErrors.push(descError)
 
         for (const action of feature.actions) {
-          const actionTitleError = RoadmapValidator.validateTitle(action.description, "action")
+          const actionTitleError = await RoadmapValidator.validateTitle(action.description, "action")
           if (actionTitleError) validationErrors.push(actionTitleError)
         }
       }
 
       // Validate sequence consistency of input (internal consistency)
-      const sequenceErrors = RoadmapValidator.validateFeatureSequence(args.features)
+      const sequenceErrors = await RoadmapValidator.validateFeatureSequence(args.features)
       validationErrors.push(...sequenceErrors)
 
       if (validationErrors.length > 0) {
@@ -90,9 +91,14 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
         if (existingFeature) {
           // Feature exists: Validate Immutability
           if (existingFeature.title !== inputFeature.title || existingFeature.description !== inputFeature.description) {
-            throw new Error(
-              `Cannot modify existing feature "${inputFeature.number}". Features are immutable. \nExisting: "${existingFeature.title}" / "${existingFeature.description}"\nProvided: "${inputFeature.title}" / "${inputFeature.description}"`,
-            )
+            const msg = await getErrorMessage("immutable_feature", {
+                id: inputFeature.number,
+                oldTitle: existingFeature.title,
+                oldDesc: existingFeature.description,
+                newTitle: inputFeature.title,
+                newDesc: inputFeature.description
+            })
+            throw new Error(msg)
           }
 
           // Process Actions
@@ -131,7 +137,7 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
       roadmap.features.sort((a, b) => parseInt(a.number) - parseInt(b.number))
 
       // Final Validation of the Merged Roadmap
-      const finalErrors = RoadmapValidator.validateFeatureSequence(roadmap.features)
+      const finalErrors = await RoadmapValidator.validateFeatureSequence(roadmap.features)
       if (finalErrors.length > 0) {
          throw new Error(`Resulting roadmap would be invalid:\n${finalErrors.map(e => e.message).join("\n")}`)
       }

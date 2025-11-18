@@ -1,6 +1,7 @@
 import { tool } from "@opencode-ai/plugin";
 import { FileStorage, RoadmapValidator } from "../storage";
 import { loadDescription } from "../descriptions";
+import { getErrorMessage } from "../errors/loader";
 export async function createReadRoadmapTool(directory) {
     const description = await loadDescription("readroadmap.txt");
     return tool({
@@ -18,17 +19,17 @@ export async function createReadRoadmapTool(directory) {
         async execute(args) {
             const storage = new FileStorage(directory);
             if (!(await storage.exists())) {
-                throw new Error("No roadmap exists. Use CreateRoadmap to create one.");
+                throw new Error(await getErrorMessage("roadmap_not_found"));
             }
             const roadmap = await storage.read();
             if (!roadmap) {
-                throw new Error("Roadmap file is corrupted or unreadable. Ask user to check roadmap.json file.");
+                throw new Error(await getErrorMessage("roadmap_corrupted"));
             }
             if (args.actionNumber && args.featureNumber) {
                 throw new Error("Cannot specify both actionNumber and featureNumber. Use one or the other, or neither for full roadmap.");
             }
             if (args.actionNumber) {
-                const actionNumberError = RoadmapValidator.validateActionNumber(args.actionNumber);
+                const actionNumberError = await RoadmapValidator.validateActionNumber(args.actionNumber);
                 if (actionNumberError) {
                     throw new Error(`${actionNumberError.message} Use ReadRoadmap to see valid action numbers.`);
                 }
@@ -45,7 +46,7 @@ export async function createReadRoadmapTool(directory) {
                 throw new Error(`Action "${args.actionNumber}" not found. Use ReadRoadmap with no arguments to see all available actions.`);
             }
             if (args.featureNumber) {
-                const featureNumberError = RoadmapValidator.validateFeatureNumber(args.featureNumber);
+                const featureNumberError = await RoadmapValidator.validateFeatureNumber(args.featureNumber);
                 if (featureNumberError) {
                     throw new Error(`${featureNumberError.message} Use ReadRoadmap to see valid feature numbers.`);
                 }

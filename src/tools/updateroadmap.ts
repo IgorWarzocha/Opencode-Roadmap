@@ -2,6 +2,7 @@ import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import { FileStorage, RoadmapValidator } from "../storage"
 import { ActionStatus } from "../types"
 import { loadDescription } from "../descriptions"
+import { getErrorMessage } from "../errors/loader"
 
 export async function createUpdateRoadmapTool(directory: string): Promise<ToolDefinition> {
   const description = await loadDescription("updateroadmap.txt")
@@ -23,15 +24,15 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
       const storage = new FileStorage(directory)
 
       if (!(await storage.exists())) {
-        throw new Error("No roadmap exists. Use CreateRoadmap to create one.")
+        throw new Error(await getErrorMessage("roadmap_not_found"))
       }
 
       const roadmap = await storage.read()
       if (!roadmap) {
-        throw new Error("Roadmap file is corrupted or unreadable. Ask user to check roadmap.json file.")
+        throw new Error(await getErrorMessage("roadmap_corrupted"))
       }
 
-      const actionNumberError = RoadmapValidator.validateActionNumber(args.actionNumber)
+      const actionNumberError = await RoadmapValidator.validateActionNumber(args.actionNumber)
       if (actionNumberError) {
         throw new Error(`${actionNumberError.message} Use ReadRoadmap to see valid action numbers.`)
       }
@@ -51,12 +52,12 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
       }
 
       if (!actionFound) {
-        throw new Error(`Action "${args.actionNumber}" not found. Use ReadRoadmap to see available action numbers.`)
+        throw new Error(await getErrorMessage("action_not_found", { id: args.actionNumber }))
       }
 
       // Validate that at least one field is being updated
       if (args.description === undefined && args.status === undefined) {
-        throw new Error("No changes specified. Provide either a description, status, or both to update the action.")
+        throw new Error(await getErrorMessage("no_changes_specified"))
       }
 
       const oldStatus = targetAction.status
@@ -64,7 +65,7 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
 
       // Validate description if provided
       if (args.description !== undefined) {
-        const descError = RoadmapValidator.validateDescription(args.description, "action")
+        const descError = await RoadmapValidator.validateDescription(args.description, "action")
         if (descError) {
           throw new Error(`${descError.message}`)
         }
@@ -73,7 +74,7 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
 
       // Validate and update status if provided
       if (args.status !== undefined) {
-        const statusTransitionError = RoadmapValidator.validateStatusProgression(targetAction.status, args.status)
+        const statusTransitionError = await RoadmapValidator.validateStatusProgression(targetAction.status, args.status)
         if (statusTransitionError) {
           throw new Error(
             `${statusTransitionError.message} Current status: "${targetAction.status}", requested: "${args.status}"`,

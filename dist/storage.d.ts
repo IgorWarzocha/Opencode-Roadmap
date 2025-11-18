@@ -8,18 +8,18 @@ export declare class FileStorage implements RoadmapStorage {
     archive(): Promise<string>;
 }
 export declare class RoadmapValidator {
-    static validateFeatureNumber(number: string): ValidationError | null;
-    static validateActionNumber(number: string): ValidationError | null;
+    static validateFeatureNumber(number: string): Promise<ValidationError | null>;
+    static validateActionNumber(number: string): Promise<ValidationError | null>;
     static validateActionSequence(actions: Array<{
         number: string;
-    }>, globalSeenNumbers?: Set<string>, featureNumber?: string): ValidationError[];
+    }>, globalSeenNumbers?: Set<string>, featureNumber?: string): Promise<ValidationError[]>;
     static validateFeatureSequence(features: Array<{
         number: string;
         actions: Array<{
             number: string;
         }>;
-    }>): ValidationError[];
-    static validateTitle(title: string, fieldType: "feature" | "action"): ValidationError | null;
-    static validateDescription(description: string, fieldType: "feature" | "action"): ValidationError | null;
-    static validateStatusProgression(currentStatus: string, newStatus: string): ValidationError | null;
+    }>): Promise<ValidationError[]>;
+    static validateTitle(title: string, fieldType: "feature" | "action"): Promise<ValidationError | null>;
+    static validateDescription(description: string, fieldType: "feature" | "action"): Promise<ValidationError | null>;
+    static validateStatusProgression(currentStatus: string, newStatus: string): Promise<ValidationError | null>;
 }
