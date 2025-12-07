@@ -44,22 +44,22 @@ export interface ValidationResult {
 }
 
 export interface CreateRoadmapInput {
-  features: Array<{
+  features: {
     number: string
     title: string
     description: string
-    actions: Array<{
+    actions: {
       number: string
       description: string
       status: "pending"
-    }>
-  }>
+    }[]
+  }[]
 }
 
 export interface UpdateRoadmapInput {
   actionNumber: string
   description?: string
-  status: ActionStatus
+  status?: ActionStatus
 }
 
 export interface ReadRoadmapInput {

@@ -1,8 +1,6 @@
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
-import { FileStorage, RoadmapValidator } from "../storage"
-import { ActionStatus } from "../types"
-import { loadDescription } from "../descriptions"
-import { getErrorMessage } from "../errors/loader"
+import { FileStorage, RoadmapValidator } from "../storage.js"
+import { loadDescription } from "../descriptions/index.js"
 
 export async function createUpdateRoadmapTool(directory: string): Promise<ToolDefinition> {
   const description = await loadDescription("updateroadmap.txt")
@@ -20,25 +18,25 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         .optional()
         .describe("New action status - optional if only updating description"),
     },
-    async execute(args: any) {
+    async execute(args) {
       const storage = new FileStorage(directory)
 
       if (!(await storage.exists())) {
-        throw new Error(await getErrorMessage("roadmap_not_found"))
+        throw new Error("Roadmap not found. Use CreateRoadmap to create one.")
       }
 
       const roadmap = await storage.read()
       if (!roadmap) {
-        throw new Error(await getErrorMessage("roadmap_corrupted"))
+        throw new Error("Roadmap file is corrupted. Please fix manually.")
       }
 
-      const actionNumberError = await RoadmapValidator.validateActionNumber(args.actionNumber)
+      const actionNumberError = RoadmapValidator.validateActionNumber(args.actionNumber)
       if (actionNumberError) {
         throw new Error(`${actionNumberError.message} Use ReadRoadmap to see valid action numbers.`)
       }
 
-      let targetAction: any = null
-      let targetFeature: any = null
+      let targetAction: { status: string; description: string } | null = null
+      let targetFeature: { number: string; title: string; description: string; actions: { number: string; status: string; description: string }[] } | null = null
       let actionFound = false
 
       for (const feature of roadmap.features) {
@@ -52,12 +50,17 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
       }
 
       if (!actionFound) {
-        throw new Error(await getErrorMessage("action_not_found", { id: args.actionNumber }))
+        throw new Error(`Action "${args.actionNumber}" not found. Use ReadRoadmap to see valid action numbers.`)
+      }
+
+      // TypeScript: we know targetAction and targetFeature are not null here
+      if (!targetAction || !targetFeature) {
+        throw new Error("Internal error: target action not found.")
       }
 
       // Validate that at least one field is being updated
       if (args.description === undefined && args.status === undefined) {
-        throw new Error(await getErrorMessage("no_changes_specified"))
+        throw new Error("No changes specified. Please provide description and/or status.")
       }
 
       const oldStatus = targetAction.status
@@ -65,7 +68,7 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
 
       // Validate description if provided
       if (args.description !== undefined) {
-        const descError = await RoadmapValidator.validateDescription(args.description, "action")
+        const descError = RoadmapValidator.validateDescription(args.description, "action")
         if (descError) {
           throw new Error(`${descError.message}`)
         }
@@ -74,13 +77,13 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
 
       // Validate and update status if provided
       if (args.status !== undefined) {
-        const statusTransitionError = await RoadmapValidator.validateStatusProgression(targetAction.status, args.status)
+        const statusTransitionError = RoadmapValidator.validateStatusProgression(targetAction.status, args.status)
         if (statusTransitionError) {
           throw new Error(
             `${statusTransitionError.message} Current status: "${targetAction.status}", requested: "${args.status}"`,
           )
         }
-        targetAction.status = args.status as ActionStatus
+        targetAction.status = args.status
       }
 
       await storage.write(roadmap)
@@ -112,7 +115,7 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
       }
 
       // Format feature context
-      const featureCompleted = targetFeature.actions.filter((a: any) => a.status === "completed").length
+      const featureCompleted = targetFeature.actions.filter((a) => a.status === "completed").length
       const featureTotal = targetFeature.actions.length
       
       let featureContext = `\n\nFeature ${targetFeature.number}: ${targetFeature.title} (${featureCompleted}/${featureTotal} complete)\n`

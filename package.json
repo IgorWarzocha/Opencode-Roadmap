@@ -1,9 +1,15 @@
 {
-  "name": "opencode-roadmap-plugin",
-  "version": "1.0.0",
+  "name": "@howaboua/opencode-roadmap-plugin",
+  "version": "0.1.5",
   "description": "Strategic roadmap planning and multi-agent coordination for OpenCode",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "opencode",
     "plugin",
@@ -11,25 +17,30 @@
     "planning",
     "multi-agent"
   ],
-  "author": "OpenCode Community",
+  "author": "howaboua",
   "license": "MIT",
-  "dependencies": {
-    "@opencode-ai/plugin": "^1.0.0",
-    "zod": "^3.22.0"
+  "peerDependencies": {
+    "@opencode-ai/plugin": "^1.0.0"
   },
   "devDependencies": {
+    "@opencode-ai/plugin": "^1.0.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
     "typescript": "^5.0.0",
-    "@types/node": "^20.0.0"
+    "zod": "^3.22.0"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "build": "tsc -p tsconfig.json && npm run copy-assets",
+    "copy-assets": "mkdir -p dist/src/descriptions dist/src/errors && cp src/descriptions/*.txt dist/src/descriptions/ && cp src/errors/*.txt dist/src/errors/",
+    "lint": "eslint . --ext .ts",
     "prepublishOnly": "npm run build"
   },
-  "files": [
-    "dist",
-    "README.md"
-  ],
   "opencode": {
     "type": "plugin",
     "tools": [
@@ -37,14 +48,5 @@
       "updateroadmap",
       "readroadmap"
     ]
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/sst/opencode",
-    "directory": "roadmap"
-  },
-  "bugs": {
-    "url": "https://github.com/sst/opencode/issues"
-  },
-  "homepage": "https://opencode.ai"
+  }
 }

@@ -1,9 +1,9 @@
 import type { Plugin } from "@opencode-ai/plugin"
-import { createCreateRoadmapTool } from "./tools/createroadmap"
-import { createUpdateRoadmapTool } from "./tools/updateroadmap"
-import { createReadRoadmapTool } from "./tools/readroadmap"
+import { createCreateRoadmapTool } from "./tools/createroadmap.js"
+import { createUpdateRoadmapTool } from "./tools/updateroadmap.js"
+import { createReadRoadmapTool } from "./tools/readroadmap.js"
 
-export const RoadmapPlugin: Plugin = async ({ project, directory, worktree, $ }) => {
+export const RoadmapPlugin: Plugin = async ({ directory }) => {
   return {
     tool: {
       createroadmap: await createCreateRoadmapTool(directory),

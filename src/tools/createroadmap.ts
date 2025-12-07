@@ -1,8 +1,8 @@
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
-import { FileStorage, RoadmapValidator } from "../storage"
-import { Roadmap } from "../types"
-import { loadDescription } from "../descriptions"
-import { getErrorMessage } from "../errors/loader"
+import { FileStorage, RoadmapValidator } from "../storage.js"
+import type { Roadmap } from "../types.js"
+import { loadDescription } from "../descriptions/index.js"
+import { getErrorMessage } from "../errors/loader.js"
 
 export async function createCreateRoadmapTool(directory: string): Promise<ToolDefinition> {
   const description = await loadDescription("createroadmap.txt")
@@ -31,7 +31,7 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
         )
         .describe("Array of features for roadmap"),
     },
-    async execute(args: any) {
+    async execute(args) {
       const storage = new FileStorage(directory)
       let roadmap: Roadmap
       let isUpdate = false
@@ -53,7 +53,7 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
         )
       }
 
-      const validationErrors: any[] = []
+      const validationErrors: { message: string }[] = []
 
       // First pass: structural validation of input
       for (const feature of args.features) {
@@ -63,20 +63,20 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
           )
         }
 
-        const titleError = await RoadmapValidator.validateTitle(feature.title, "feature")
+        const titleError = RoadmapValidator.validateTitle(feature.title, "feature")
         if (titleError) validationErrors.push(titleError)
 
-        const descError = await RoadmapValidator.validateDescription(feature.description, "feature")
+        const descError = RoadmapValidator.validateDescription(feature.description, "feature")
         if (descError) validationErrors.push(descError)
 
         for (const action of feature.actions) {
-          const actionTitleError = await RoadmapValidator.validateTitle(action.description, "action")
+          const actionTitleError = RoadmapValidator.validateTitle(action.description, "action")
           if (actionTitleError) validationErrors.push(actionTitleError)
         }
       }
 
       // Validate sequence consistency of input (internal consistency)
-      const sequenceErrors = await RoadmapValidator.validateFeatureSequence(args.features)
+      const sequenceErrors = RoadmapValidator.validateFeatureSequence(args.features)
       validationErrors.push(...sequenceErrors)
 
       if (validationErrors.length > 0) {
@@ -124,7 +124,7 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
             number: inputFeature.number,
             title: inputFeature.title,
             description: inputFeature.description,
-            actions: inputFeature.actions.map((a: any) => ({
+            actions: inputFeature.actions.map((a) => ({
               number: a.number,
               description: a.description,
               status: a.status,
@@ -137,7 +137,7 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
       roadmap.features.sort((a, b) => parseInt(a.number) - parseInt(b.number))
 
       // Final Validation of the Merged Roadmap
-      const finalErrors = await RoadmapValidator.validateFeatureSequence(roadmap.features)
+      const finalErrors = RoadmapValidator.validateFeatureSequence(roadmap.features)
       if (finalErrors.length > 0) {
          throw new Error(`Resulting roadmap would be invalid:\n${finalErrors.map(e => e.message).join("\n")}`)
       }

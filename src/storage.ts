@@ -1,12 +1,16 @@
 import { promises as fs } from "fs"
 import { join } from "path"
-import type { Roadmap, RoadmapStorage, ValidationError } from "./types"
-import { getErrorMessage } from "./errors/loader"
+import type { Roadmap, RoadmapStorage, ValidationError } from "./types.js"
+import { Roadmap as RoadmapSchema } from "./types.js"
 
 const ROADMAP_FILE = "roadmap.json"
 
 export class FileStorage implements RoadmapStorage {
-  constructor(private directory: string) {}
+  private readonly directory: string
+
+  constructor(directory: string) {
+    this.directory = directory
+  }
 
   async exists(): Promise<boolean> {
     try {
@@ -26,25 +30,20 @@ export class FileStorage implements RoadmapStorage {
         return null
       }
 
-      const parsed = JSON.parse(data)
-
-      if (!parsed || typeof parsed !== "object") {
-        throw new Error("Invalid roadmap format: not an object")
-      }
-
-      if (!Array.isArray(parsed.features)) {
-        throw new Error("Invalid roadmap format: missing or invalid features array")
-      }
-
-      return parsed as Roadmap
-    } catch (error) {
+      const parsed: unknown = JSON.parse(data)
+      const validated = RoadmapSchema.parse(parsed)
+      return validated
+    } catch (error: unknown) {
       if (error instanceof SyntaxError) {
         throw new Error("Roadmap file contains invalid JSON. File may be corrupted.")
       }
       if (error instanceof Error && error.message.includes("ENOENT")) {
         return null
       }
-      throw error
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error("Unknown error while reading roadmap")
     }
   }
 
@@ -56,13 +55,16 @@ export class FileStorage implements RoadmapStorage {
       const data = JSON.stringify(roadmap, null, 2)
       await fs.writeFile(tempPath, data, "utf-8")
       await fs.rename(tempPath, filePath)
-    } catch (error) {
+    } catch (error: unknown) {
       try {
         await fs.unlink(tempPath)
       } catch {
         // Ignore cleanup errors
       }
-      throw error
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error("Unknown error while writing roadmap")
     }
   }
 
@@ -78,53 +80,52 @@ export class FileStorage implements RoadmapStorage {
 }
 
 export class RoadmapValidator {
-  static async validateFeatureNumber(number: string): Promise<ValidationError | null> {
+  static validateFeatureNumber(number: string): ValidationError | null {
     if (!number || typeof number !== "string") {
       return {
         code: "INVALID_FEATURE_NUMBER",
-        message: await getErrorMessage("invalid_feature_id", { id: "undefined" }),
+        message: "Invalid feature ID: must be a string.",
       }
     }
 
     if (!/^\d+$/.test(number)) {
       return {
         code: "INVALID_FEATURE_NUMBER_FORMAT",
-        message: await getErrorMessage("invalid_feature_id", { id: number }),
+        message: "Invalid feature ID format: must be a simple number.",
       }
     }
 
     return null
   }
 
-  static async validateActionNumber(number: string): Promise<ValidationError | null> {
+  static validateActionNumber(number: string): ValidationError | null {
     if (!number || typeof number !== "string") {
       return {
         code: "INVALID_ACTION_NUMBER",
-        message: await getErrorMessage("invalid_action_id", { id: "undefined" }),
+        message: "Invalid action ID: must be a string.",
       }
     }
 
     if (!/^\d+\.\d{2}$/.test(number)) {
       return {
         code: "INVALID_ACTION_NUMBER_FORMAT",
-        message: await getErrorMessage("invalid_action_id", { id: number }),
+        message: "Invalid action ID format: must be X.YY (e.g., 1.01).",
       }
     }
 
     return null
   }
 
-  static async validateActionSequence(
-    actions: Array<{ number: string }>, 
+  static validateActionSequence(
+    actions: { number: string }[], 
     globalSeenNumbers?: Set<string>,
     featureNumber?: string
-  ): Promise<ValidationError[]> {
+  ): ValidationError[] {
     const errors: ValidationError[] = []
     const seenNumbers = new Set<string>()
 
-    for (let i = 0; i < actions.length; i++) {
-      const action = actions[i]
-      const numberError = await this.validateActionNumber(action.number)
+    for (const action of actions) {
+      const numberError = this.validateActionNumber(action.number)
 
       if (numberError) {
         errors.push(numberError)
@@ -137,7 +138,7 @@ export class RoadmapValidator {
         if (actionFeaturePrefix !== featureNumber) {
           errors.push({
             code: "ACTION_FEATURE_MISMATCH",
-            message: await getErrorMessage("action_mismatch", { action: action.number, feature: featureNumber }),
+            message: `Action "${action.number}" does not belong to feature "${featureNumber}".`,
           })
         }
       }
@@ -165,16 +166,15 @@ export class RoadmapValidator {
     return errors
   }
 
-  static async validateFeatureSequence(
-    features: Array<{ number: string; actions: Array<{ number: string }> }>,
-  ): Promise<ValidationError[]> {
+  static validateFeatureSequence(
+    features: { number: string; actions: { number: string }[] }[],
+  ): ValidationError[] {
     const errors: ValidationError[] = []
     const seenNumbers = new Set<string>()
     const seenActionNumbers = new Set<string>()
 
-    for (let i = 0; i < features.length; i++) {
-      const feature = features[i]
-      const numberError = await this.validateFeatureNumber(feature.number)
+    for (const feature of features) {
+      const numberError = this.validateFeatureNumber(feature.number)
 
       if (numberError) {
         errors.push(numberError)
@@ -190,14 +190,14 @@ export class RoadmapValidator {
 
       seenNumbers.add(feature.number)
 
-      const actionErrors = await this.validateActionSequence(feature.actions, seenActionNumbers, feature.number)
+      const actionErrors = this.validateActionSequence(feature.actions, seenActionNumbers, feature.number)
       errors.push(...actionErrors)
     }
 
     return errors
   }
 
-  static async validateTitle(title: string, fieldType: "feature" | "action"): Promise<ValidationError | null> {
+  static validateTitle(title: string, fieldType: "feature" | "action"): ValidationError | null {
     if (!title || typeof title !== "string") {
       return {
         code: "INVALID_TITLE",
@@ -215,7 +215,7 @@ export class RoadmapValidator {
     return null
   }
 
-  static async validateDescription(description: string, fieldType: "feature" | "action"): Promise<ValidationError | null> {
+  static validateDescription(description: string, fieldType: "feature" | "action"): ValidationError | null {
     if (!description || typeof description !== "string") {
       return {
         code: "INVALID_DESCRIPTION",
@@ -233,7 +233,7 @@ export class RoadmapValidator {
     return null
   }
 
-  static async validateStatusProgression(currentStatus: string, newStatus: string): Promise<ValidationError | null> {
+  static validateStatusProgression(currentStatus: string, newStatus: string): ValidationError | null {
     const statusFlow = {
       pending: ["in_progress", "completed"],
       in_progress: ["completed"],
@@ -245,11 +245,7 @@ export class RoadmapValidator {
     if (!(allowedTransitions as string[]).includes(newStatus)) {
       return {
         code: "INVALID_STATUS_TRANSITION",
-        message: await getErrorMessage("invalid_transition", { 
-            from: currentStatus, 
-            to: newStatus, 
-            allowed: allowedTransitions.length > 0 ? allowedTransitions.join(", ") : "None (terminal state)" 
-        }),
+        message: `Invalid transition from "${currentStatus}" to "${newStatus}". Allowed: ${allowedTransitions.length > 0 ? allowedTransitions.join(", ") : "None (terminal state)"}`,
       }
     }
 

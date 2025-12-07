@@ -1,1 +1,1 @@
-export { loadDescription } from "./loader"
+export { loadDescription } from "./loader.js"
