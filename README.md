@@ -30,14 +30,14 @@ OpenCode installs it automatically on next launch.
 
 ### `createroadmap`
 
-Create or extend a project roadmap.
+Create or extend a project roadmap. Requires a feature list and a short spec for each feature.
 
 ```
-"Create a roadmap for building user auth with login, signup, and password reset"
+"Create a roadmap with features: 1) Auth, 2) Profiles. Specs: Auth uses OAuth and must support password reset; Profiles needs avatar uploads and privacy settings"
 ```
 
-- Features group related work (`"1"`, `"2"`, `"3"`)
-- Actions are concrete tasks (`"1.01"`, `"1.02"`) within features
+- Features group related work (`"1"`, `"2"`, `"3"`) and include a brief spec
+- Actions are markdown task list items (`- [ ] 1.01 ...`) within features
 - New actions always start as `pending`
 - Append-only: existing IDs never change
 
@@ -54,11 +54,11 @@ Before delegating work to Task tool subagents, instruct them to read the roadmap
 
 ### `updateroadmap`
 
-Change action status or description.
+Change action status or description. Each update includes a brief note appended to the updates section.
 
 ```
-"Mark action 1.01 as in_progress"
-"Action 2.03 is completed"
+"Mark action 1.01 as in_progress — Drafted schema notes"
+"Action 2.03 is completed — Added tests for edge cases"
 ```
 
 **Statuses:** `pending` → `in_progress` → `completed` | `cancelled`
@@ -92,8 +92,8 @@ AI: Reads roadmap → sees Feature 1 has 4 actions → uses todowrite for immedi
 
 ## Storage
 
-- **Active:** `roadmap.json` in project root
-- **Archived:** `roadmap.archive.<timestamp>.json` when complete
+- **Active:** Stored as a markdown roadmap alongside the project
+- **Archived:** Snapshot archived when complete
 
 ## License
 

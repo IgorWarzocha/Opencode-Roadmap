@@ -12,8 +12,8 @@ Structure: Features contain Actions. IDs are immutable once created.
 
 Inputs:
 - feature: short label for the overall roadmap
-- spec: natural-language spec for the overall direction
-- features/actions: structured tasks with numbered IDs
+- spec: natural-language spec for the overall direction (scope, constraints, success criteria)
+- features/actions: structured tasks with numbered IDs and clear, detailed descriptions
 
 Example:
 {

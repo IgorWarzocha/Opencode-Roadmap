@@ -7,4 +7,4 @@ Use after completing work on an action. When delegating to Task tool subagents, 
 
 Archives roadmap automatically when all actions reach completed.
 
-Input: actionNumber (required), status (optional), description (optional).
+Input: actionNumber (required), note (required), status (optional), description (optional).

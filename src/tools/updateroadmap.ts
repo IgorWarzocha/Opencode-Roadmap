@@ -23,6 +23,7 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         .enum(["pending", "in_progress", "completed", "cancelled"])
         .optional()
         .describe("New action status. Flexible transitions allowed except from cancelled."),
+      note: tool.schema.string().describe("Required update note to append to the action."),
     },
     async execute(args) {
       const storage = new FileStorage(directory)
@@ -70,6 +71,11 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
           throw new Error("No changes specified. Please provide description and/or status.")
         }
 
+        const noteError = RoadmapValidator.validateDescription(args.note, "action")
+        if (noteError) {
+          throw new Error(`${noteError.message}`)
+        }
+
         const oldStatus = targetAction.status
         const oldDescription = targetAction.description
 
@@ -81,6 +87,8 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
           }
           targetAction.description = args.description
         }
+
+        targetAction.description = `${targetAction.description} (note: ${args.note})`
 
         // Validate and update status if provided
         if (args.status !== undefined) {
@@ -99,6 +107,9 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         }
         if (args.status !== undefined && oldStatus !== args.status) {
           changes.push(`status: "${oldStatus}" → "${args.status}"`)
+        }
+        if (oldDescription !== targetAction.description) {
+          changes.push("note added")
         }
 
         if (changes.length === 0) {

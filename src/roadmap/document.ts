@@ -1,20 +1,27 @@
 /**
  * Parses and renders the roadmap markdown document.
- * Keeps frontmatter simple and the task block machine-readable.
+ * Keeps frontmatter simple and the task list machine-readable.
  * Exposes a narrow API for the storage layer.
  */
-import type { Roadmap, RoadmapDocument } from "../types.js"
+import type { ActionStatus, Roadmap, RoadmapDocument } from "../types.js"
 import { Roadmap as RoadmapSchema } from "../types.js"
 
 const FRONTMATTER_START = "---\n"
 const FRONTMATTER_END = "\n---\n"
-const TASK_FENCE = "```json"
-const TASK_FENCE_END = "\n```"
+const TASK_LIST_HEADER = "## Task List"
+
+const STATUS_MAP: Record<string, ActionStatus> = {
+  " ": "pending",
+  x: "completed",
+  X: "completed",
+  "~": "in_progress",
+  "-": "cancelled",
+}
 
 export const parseDocument = (data: string): RoadmapDocument => {
   const { frontmatter, body } = splitFrontmatter(data)
   const { feature, spec } = parseFrontmatter(frontmatter)
-  const roadmap = parseRoadmapBody(body)
+  const roadmap = parseTaskList(body)
 
   return { feature, spec, roadmap }
 }
@@ -23,7 +30,7 @@ export const buildDocument = (document: RoadmapDocument): string => {
   const specValue = document.spec.trimEnd()
   const specLines = specValue === "" ? [""] : specValue.split("\n")
   const specBlock = specLines.map((line) => `  ${line}`).join("\n")
-  const tasks = JSON.stringify(document.roadmap, null, 2)
+  const taskList = buildTaskList(document.roadmap)
 
   return [
     "---",
@@ -32,11 +39,19 @@ export const buildDocument = (document: RoadmapDocument): string => {
     specBlock,
     "---",
     "",
-    TASK_FENCE,
-    tasks,
-    "```",
+    TASK_LIST_HEADER,
     "",
+    taskList,
   ].join("\n")
+}
+
+export const ensureDocument = (document: RoadmapDocument): RoadmapDocument => {
+  const validated = RoadmapSchema.parse(document.roadmap)
+  return {
+    feature: document.feature,
+    spec: document.spec,
+    roadmap: validated,
+  }
 }
 
 const splitFrontmatter = (data: string): { frontmatter: string; body: string } => {
@@ -117,32 +132,109 @@ const normalizeSpec = (lines: string[]): string => {
   return normalized.join("\n").trimEnd()
 }
 
-const parseRoadmapBody = (body: string): Roadmap => {
-  const fenceStart = body.indexOf(TASK_FENCE)
-  if (fenceStart === -1) {
-    throw new Error("Roadmap format is invalid. Missing task block.")
+const parseTaskList = (body: string): Roadmap => {
+  const lines = body.split("\n")
+  const features: Roadmap["features"] = []
+  let currentFeature: Roadmap["features"][number] | null = null
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (trimmed === "" || trimmed === TASK_LIST_HEADER) {
+      continue
+    }
+
+    const featureMatch = trimmed.match(/^#+\s*Feature\s+(\d+)\s*:\s*(.+)$/)
+    if (featureMatch) {
+      if (currentFeature) {
+        features.push(currentFeature)
+      }
+      currentFeature = {
+        number: featureMatch[1],
+        title: featureMatch[2].trim(),
+        description: "",
+        actions: [],
+      }
+      continue
+    }
+
+    const descriptionMatch = trimmed.match(/^Description:\s*(.+)$/)
+    if (descriptionMatch) {
+      if (!currentFeature) {
+        throw new Error("Roadmap format is invalid. Description must follow a feature header.")
+      }
+      currentFeature.description = descriptionMatch[1].trim()
+      continue
+    }
+
+    const actionMatch = trimmed.match(/^-\s*\[([ xX~-])\]\s+(\d+\.\d{2})\s+(.+)$/)
+    if (actionMatch) {
+      if (!currentFeature) {
+        throw new Error("Roadmap format is invalid. Action must follow a feature header.")
+      }
+      const statusToken = actionMatch[1]
+      const status = STATUS_MAP[statusToken]
+      if (!status) {
+        throw new Error("Roadmap format is invalid. Unsupported status marker.")
+      }
+      const number = actionMatch[2]
+      const numberPrefix = number.split(".")[0]
+      if (numberPrefix !== currentFeature.number) {
+        throw new Error(`Action "${number}" does not belong to feature "${currentFeature.number}".`)
+      }
+      currentFeature.actions.push({
+        number,
+        description: actionMatch[3].trim(),
+        status,
+      })
+      continue
+    }
   }
 
-  const jsonStart = body.indexOf("\n", fenceStart + TASK_FENCE.length)
-  if (jsonStart === -1) {
-    throw new Error("Roadmap format is invalid. Task block is incomplete.")
+  if (currentFeature) {
+    features.push(currentFeature)
   }
 
-  const fenceEnd = body.indexOf(TASK_FENCE_END, jsonStart + 1)
-  if (fenceEnd === -1) {
-    throw new Error("Roadmap format is invalid. Task block is not closed.")
+  if (features.length === 0) {
+    throw new Error("Roadmap format is invalid. Missing task list.")
   }
 
-  const jsonText = body.slice(jsonStart + 1, fenceEnd).trim()
-  const parsed: unknown = JSON.parse(jsonText)
-  return RoadmapSchema.parse(parsed)
+  for (const feature of features) {
+    if (!feature.description) {
+      throw new Error(`Feature "${feature.number}" is missing a description.`)
+    }
+    if (feature.actions.length === 0) {
+      throw new Error(`Feature "${feature.number}" must include at least one action.`)
+    }
+  }
+
+  return RoadmapSchema.parse({ features })
 }
 
-export const ensureDocument = (document: RoadmapDocument): RoadmapDocument => {
-  const validated = RoadmapSchema.parse(document.roadmap)
-  return {
-    feature: document.feature,
-    spec: document.spec,
-    roadmap: validated,
+const buildTaskList = (roadmap: Roadmap): string => {
+  const lines: string[] = []
+
+  for (const feature of roadmap.features) {
+    lines.push(`### Feature ${feature.number}: ${feature.title}`)
+    lines.push(`Description: ${feature.description}`)
+    for (const action of feature.actions) {
+      lines.push(`${renderAction(action.status)} ${action.number} ${action.description}`)
+    }
+    lines.push("")
+  }
+
+  return lines.join("\n")
+}
+
+const renderAction = (status: ActionStatus): string => {
+  switch (status) {
+    case "completed":
+      return "- [x]"
+    case "in_progress":
+      return "- [~]"
+    case "cancelled":
+      return "- [-]"
+    case "pending":
+    default:
+      return "- [ ]"
   }
 }
