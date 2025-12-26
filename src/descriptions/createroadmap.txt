@@ -1,20 +1,24 @@
-Initialize or append to project roadmap. Supports adding new features and actions.
+Establish a durable project roadmap saved to disk. Provides shared context across sessions and Task tool subagents.
 
-Constraints:
-1. Descriptions: MUST be detailed, clear, and actionable (unlike the minimal example below).
-2. Append-only: New IDs must follow sequence (Feature 1->2, Action 1.01->1.02).
-3. ID Format: Feature "1", Action "1.01".
-4. Validation: Action prefix MUST match Feature (Action "1.01" belongs to Feature "1").
-5. Status: Must be "pending".
+Use when:
+- User says "roadmap", "plan the project", "phases", or "milestones"  
+- Work will be delegated to Task tool subagents that need shared context
+- Deliverables group naturally into distinct features
+
+When launching Task tool subagents, instruct them to call readroadmap first to understand their work within the broader plan.
+
+Structure: Features contain Actions. IDs are immutable once created.
+
+Format:
+- Feature: number "1", "2", title, description
+- Action: number "1.01", "1.02" (prefix matches parent feature), description, status "pending"
 
 Example:
 {
-  "features": [
-    {
-      "number": "1", "title": "Auth", "description": "User authentication system setup",
-      "actions": [
-        { "number": "1.01", "description": "Initialize PostgreSQL database schema with users table and indexes", "status": "pending" }
-      ]
-    }
-  ]
+  "features": [{
+    "number": "1", "title": "Auth", "description": "User authentication system",
+    "actions": [
+      { "number": "1.01", "description": "Design JWT token flow and refresh strategy", "status": "pending" }
+    ]
+  }]
 }

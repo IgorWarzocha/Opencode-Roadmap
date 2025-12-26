@@ -1,7 +1,11 @@
+/**
+ * Tool for reading roadmap state, progress, and details.
+ * Supports filtering by feature or action number.
+ */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import { FileStorage, RoadmapValidator } from "../storage.js"
+import type { Action, Feature } from "../types.js"
 import { loadDescription } from "../descriptions/index.js"
-
 
 export async function createReadRoadmapTool(directory: string): Promise<ToolDefinition> {
   const description = await loadDescription("readroadmap.txt")
@@ -43,7 +47,7 @@ export async function createReadRoadmapTool(directory: string): Promise<ToolDefi
         }
 
         for (const feature of roadmap.features) {
-          const action = feature.actions.find((a) => a.number === args.actionNumber)
+          const action = feature.actions.find((a: Action) => a.number === args.actionNumber)
           if (action) {
             return (
               `Action ${args.actionNumber} from Feature "${feature.title}":\n` +
@@ -66,7 +70,7 @@ export async function createReadRoadmapTool(directory: string): Promise<ToolDefi
           throw new Error(`${featureNumberError.message} Use ReadRoadmap to see valid feature numbers.`)
         }
 
-        const feature = roadmap.features.find((f) => f.number === args.featureNumber)
+        const feature = roadmap.features.find((f: Feature) => f.number === args.featureNumber)
         if (!feature) {
           throw new Error(
             `Feature "${args.featureNumber}" not found. Use ReadRoadmap with no arguments to see all available features.`,
@@ -74,10 +78,10 @@ export async function createReadRoadmapTool(directory: string): Promise<ToolDefi
         }
 
         const actionList = feature.actions
-          .map((action) => `  ${action.number}: ${action.description} [${action.status}]`)
+          .map((action: Action) => `  ${action.number}: ${action.description} [${action.status}]`)
           .join("\n")
 
-        const completedCount = feature.actions.filter((a) => a.status === "completed").length
+        const completedCount = feature.actions.filter((a: Action) => a.status === "completed").length
         const totalCount = feature.actions.length
 
         return (
@@ -88,13 +92,14 @@ export async function createReadRoadmapTool(directory: string): Promise<ToolDefi
         )
       }
 
-      const totalActions = roadmap.features.reduce((sum, feature) => sum + feature.actions.length, 0)
+      const totalActions = roadmap.features.reduce((sum: number, feature: Feature) => sum + feature.actions.length, 0)
       const completedActions = roadmap.features.reduce(
-        (sum, feature) => sum + feature.actions.filter((a) => a.status === "completed").length,
+        (sum: number, feature: Feature) => sum + feature.actions.filter((a: Action) => a.status === "completed").length,
         0,
       )
       const inProgressActions = roadmap.features.reduce(
-        (sum, feature) => sum + feature.actions.filter((a) => a.status === "in_progress").length,
+        (sum: number, feature: Feature) =>
+          sum + feature.actions.filter((a: Action) => a.status === "in_progress").length,
         0,
       )
       const pendingActions = totalActions - completedActions - inProgressActions
@@ -107,7 +112,7 @@ export async function createReadRoadmapTool(directory: string): Promise<ToolDefi
         `Progress: ${completedActions} completed, ${inProgressActions} in progress, ${pendingActions} pending\n\n`
 
       for (const feature of roadmap.features) {
-        const featureCompleted = feature.actions.filter((a) => a.status === "completed").length
+        const featureCompleted = feature.actions.filter((a: Action) => a.status === "completed").length
         const featureTotal = feature.actions.length
 
         output += `Feature ${feature.number}: ${feature.title} (${featureCompleted}/${featureTotal} complete)\n`

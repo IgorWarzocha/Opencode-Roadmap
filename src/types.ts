@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-export const ActionStatus = z.enum(["pending", "in_progress", "completed"])
+export const ActionStatus = z.enum(["pending", "in_progress", "completed", "cancelled"])
 export type ActionStatus = z.infer<typeof ActionStatus>
 
 export const Action = z.object({

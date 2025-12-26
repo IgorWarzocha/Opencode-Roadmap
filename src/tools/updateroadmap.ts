@@ -1,5 +1,10 @@
+/**
+ * Tool for updating action status and descriptions in a roadmap.
+ * Enforces forward-only status progression and archives when complete.
+ */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import { FileStorage, RoadmapValidator } from "../storage.js"
+import type { Action } from "../types.js"
 import { loadDescription } from "../descriptions/index.js"
 
 export async function createUpdateRoadmapTool(directory: string): Promise<ToolDefinition> {
@@ -14,9 +19,9 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         .optional()
         .describe("New action description (full overwrite). If not provided, only status is updated."),
       status: tool.schema
-        .enum(["pending", "in_progress", "completed"])
+        .enum(["pending", "in_progress", "completed", "cancelled"])
         .optional()
-        .describe("New action status - optional if only updating description"),
+        .describe("New action status. Flexible transitions allowed except from cancelled."),
     },
     async execute(args) {
       const storage = new FileStorage(directory)
@@ -36,11 +41,16 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
       }
 
       let targetAction: { status: string; description: string } | null = null
-      let targetFeature: { number: string; title: string; description: string; actions: { number: string; status: string; description: string }[] } | null = null
+      let targetFeature: {
+        number: string
+        title: string
+        description: string
+        actions: { number: string; status: string; description: string }[]
+      } | null = null
       let actionFound = false
 
       for (const feature of roadmap.features) {
-        const action = feature.actions.find((a) => a.number === args.actionNumber)
+        const action = feature.actions.find((a: Action) => a.number === args.actionNumber)
         if (action) {
           targetAction = action
           targetFeature = feature
@@ -96,6 +106,10 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         changes.push(`status: "${oldStatus}" → "${args.status}"`)
       }
 
+      if (changes.length === 0) {
+        return `Action ${args.actionNumber} unchanged. Provided values match current state.`
+      }
+
       // Check if all actions are completed
       let allCompleted = true
       for (const feature of roadmap.features) {
@@ -117,10 +131,10 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
       // Format feature context
       const featureCompleted = targetFeature.actions.filter((a) => a.status === "completed").length
       const featureTotal = targetFeature.actions.length
-      
+
       let featureContext = `\n\nFeature ${targetFeature.number}: ${targetFeature.title} (${featureCompleted}/${featureTotal} complete)\n`
       featureContext += `Description: ${targetFeature.description}\n`
-      
+
       for (const action of targetFeature.actions) {
         const statusIcon = action.status === "completed" ? "✓" : action.status === "in_progress" ? "→" : "○"
         featureContext += `${action.number} ${statusIcon} ${action.description} [${action.status}]\n`

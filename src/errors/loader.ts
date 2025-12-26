@@ -1,5 +1,13 @@
+/**
+ * Loads error message templates from the errors directory.
+ * Supports template variable substitution for dynamic error messages.
+ */
 import { promises as fs } from "fs"
-import { join } from "path"
+import { dirname, join } from "path"
+import { fileURLToPath } from "url"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const ERROR_CACHE: Record<string, string> = {}
 
@@ -22,6 +30,6 @@ export async function loadErrorTemplate(filename: string): Promise<string> {
 }
 
 export async function getErrorMessage(filename: string, params: Record<string, string> = {}): Promise<string> {
-    const template = await loadErrorTemplate(filename)
-    return template.replace(/\{(\w+)\}/g, (_, key) => params[key as string] || `{${key}}`)
+  const template = await loadErrorTemplate(filename)
+  return template.replace(/\{(\w+)\}/g, (_, key) => params[key as string] || `{${key}}`)
 }

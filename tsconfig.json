@@ -3,11 +3,14 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "lib": ["ES2022"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "declaration": true,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "types": ["node"],
+    "rootDir": "."
   },
-  "include": ["."]
+  "include": ["src/**/*", "index.ts"]
 }

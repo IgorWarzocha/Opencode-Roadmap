@@ -1,8 +1,18 @@
+/**
+ * Tool for creating and appending to project roadmaps.
+ * Supports merge logic for adding new features/actions to existing roadmaps.
+ */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
 import { FileStorage, RoadmapValidator } from "../storage.js"
-import type { Roadmap } from "../types.js"
+import type { Action, Feature, Roadmap } from "../types.js"
 import { loadDescription } from "../descriptions/index.js"
 import { getErrorMessage } from "../errors/loader.js"
+
+interface InputAction {
+  number: string
+  description: string
+  status: "pending"
+}
 
 export async function createCreateRoadmapTool(directory: string): Promise<ToolDefinition> {
   const description = await loadDescription("createroadmap.txt")
@@ -86,24 +96,27 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
 
       // Merge Logic
       for (const inputFeature of args.features) {
-        const existingFeature = roadmap.features.find((f) => f.number === inputFeature.number)
+        const existingFeature = roadmap.features.find((f: Feature) => f.number === inputFeature.number)
 
         if (existingFeature) {
           // Feature exists: Validate Immutability
-          if (existingFeature.title !== inputFeature.title || existingFeature.description !== inputFeature.description) {
+          if (
+            existingFeature.title !== inputFeature.title ||
+            existingFeature.description !== inputFeature.description
+          ) {
             const msg = await getErrorMessage("immutable_feature", {
-                id: inputFeature.number,
-                oldTitle: existingFeature.title,
-                oldDesc: existingFeature.description,
-                newTitle: inputFeature.title,
-                newDesc: inputFeature.description
+              id: inputFeature.number,
+              oldTitle: existingFeature.title,
+              oldDesc: existingFeature.description,
+              newTitle: inputFeature.title,
+              newDesc: inputFeature.description,
             })
             throw new Error(msg)
           }
 
           // Process Actions
           for (const inputAction of inputFeature.actions) {
-            const existingAction = existingFeature.actions.find((a) => a.number === inputAction.number)
+            const existingAction = existingFeature.actions.find((a: Action) => a.number === inputAction.number)
             if (existingAction) {
               // Action exists: skip (immutable)
               continue
@@ -115,7 +128,7 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
                 status: inputAction.status,
               })
               // Sort actions to ensure order
-              existingFeature.actions.sort((a, b) => parseFloat(a.number) - parseFloat(b.number))
+              existingFeature.actions.sort((a: Action, b: Action) => parseFloat(a.number) - parseFloat(b.number))
             }
           }
         } else {
@@ -124,7 +137,7 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
             number: inputFeature.number,
             title: inputFeature.title,
             description: inputFeature.description,
-            actions: inputFeature.actions.map((a) => ({
+            actions: inputFeature.actions.map((a: InputAction) => ({
               number: a.number,
               description: a.description,
               status: a.status,
@@ -134,22 +147,31 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
       }
 
       // Final Sort of Features
-      roadmap.features.sort((a, b) => parseInt(a.number) - parseInt(b.number))
+      roadmap.features.sort((a: Feature, b: Feature) => parseInt(a.number) - parseInt(b.number))
+
+      // Safety check: ensure no feature ended up with zero actions after merge
+      for (const feature of roadmap.features) {
+        if (feature.actions.length === 0) {
+          throw new Error(`Feature "${feature.number}" has no actions. This indicates a merge error.`)
+        }
+      }
 
       // Final Validation of the Merged Roadmap
       const finalErrors = RoadmapValidator.validateFeatureSequence(roadmap.features)
       if (finalErrors.length > 0) {
-         throw new Error(`Resulting roadmap would be invalid:\n${finalErrors.map(e => e.message).join("\n")}`)
+        throw new Error(`Resulting roadmap would be invalid:\n${finalErrors.map((e) => e.message).join("\n")}`)
       }
 
       await storage.write(roadmap)
 
-      const totalActions = roadmap.features.reduce((sum, feature) => sum + feature.actions.length, 0)
+      const totalActions = roadmap.features.reduce((sum: number, feature: Feature) => sum + feature.actions.length, 0)
       const action = isUpdate ? "Updated" : "Created"
       const summary =
         `${action} roadmap with ${roadmap.features.length} features and ${totalActions} actions:\n` +
         roadmap.features
-          .map((feature) => `  Feature ${feature.number}: ${feature.title} (${feature.actions.length} actions)`)
+          .map(
+            (feature: Feature) => `  Feature ${feature.number}: ${feature.title} (${feature.actions.length} actions)`,
+          )
           .join("\n")
 
       return summary

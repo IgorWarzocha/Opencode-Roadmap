@@ -1,8 +1,15 @@
+/**
+ * Loads tool description text files from the descriptions directory.
+ * ESM-compatible using import.meta.url for path resolution.
+ */
 import { promises as fs } from "fs"
-import { join } from "path"
+import { dirname, join } from "path"
+import { fileURLToPath } from "url"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 export async function loadDescription(filename: string): Promise<string> {
-  // Assets are colocated with the compiled loader (copied into dist/src/descriptions).
   const filePath = join(__dirname, filename)
   try {
     return await fs.readFile(filePath, "utf-8")

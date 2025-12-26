@@ -1,9 +1,17 @@
+/**
+ * File-based storage for roadmap data with atomic writes and validation.
+ * Handles concurrent access via file locking and provides safe read/write operations.
+ */
 import { promises as fs } from "fs"
 import { join } from "path"
+import { z } from "zod"
 import type { Roadmap, RoadmapStorage, ValidationError } from "./types.js"
 import { Roadmap as RoadmapSchema } from "./types.js"
 
 const ROADMAP_FILE = "roadmap.json"
+const LOCK_FILE = `${ROADMAP_FILE}.lock`
+const LOCK_TIMEOUT_MS = 5000
+const LOCK_RETRY_MS = 50
 
 export class FileStorage implements RoadmapStorage {
   private readonly directory: string
@@ -37,6 +45,10 @@ export class FileStorage implements RoadmapStorage {
       if (error instanceof SyntaxError) {
         throw new Error("Roadmap file contains invalid JSON. File may be corrupted.")
       }
+      if (error instanceof z.ZodError) {
+        const issues = error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")
+        throw new Error(`Roadmap file has invalid structure: ${issues}`)
+      }
       if (error instanceof Error && error.message.includes("ENOENT")) {
         return null
       }
@@ -47,28 +59,53 @@ export class FileStorage implements RoadmapStorage {
     }
   }
 
-  async write(roadmap: Roadmap): Promise<void> {
-    const filePath = join(this.directory, ROADMAP_FILE)
-    const tempPath = join(this.directory, `${ROADMAP_FILE}.tmp.${Date.now()}`)
+  private async acquireLock(): Promise<() => Promise<void>> {
+    const lockPath = join(this.directory, LOCK_FILE)
+    const start = Date.now()
 
-    try {
-      const data = JSON.stringify(roadmap, null, 2)
-      await fs.writeFile(tempPath, data, "utf-8")
-      await fs.rename(tempPath, filePath)
-    } catch (error: unknown) {
+    while (Date.now() - start < LOCK_TIMEOUT_MS) {
       try {
-        await fs.unlink(tempPath)
+        await fs.writeFile(lockPath, String(process.pid), { flag: "wx" })
+        return async () => {
+          await fs.unlink(lockPath).catch(() => {})
+        }
       } catch {
-        // Ignore cleanup errors
+        await new Promise((r) => setTimeout(r, LOCK_RETRY_MS))
       }
-      if (error instanceof Error) {
-        throw error
+    }
+    throw new Error("Could not acquire lock on roadmap file. Another operation may be in progress.")
+  }
+
+  async write(roadmap: Roadmap): Promise<void> {
+    await fs.mkdir(this.directory, { recursive: true }).catch(() => {})
+
+    const unlock = await this.acquireLock()
+    try {
+      const filePath = join(this.directory, ROADMAP_FILE)
+      const randomSuffix = Math.random().toString(36).slice(2, 8)
+      const tempPath = join(this.directory, `${ROADMAP_FILE}.tmp.${Date.now()}.${randomSuffix}`)
+
+      try {
+        const data = JSON.stringify(roadmap, null, 2)
+        await fs.writeFile(tempPath, data, "utf-8")
+        await fs.rename(tempPath, filePath)
+      } catch (error: unknown) {
+        await fs.unlink(tempPath).catch(() => {})
+        if (error instanceof Error) {
+          throw error
+        }
+        throw new Error("Unknown error while writing roadmap")
       }
-      throw new Error("Unknown error while writing roadmap")
+    } finally {
+      await unlock()
     }
   }
 
   async archive(): Promise<string> {
+    if (!(await this.exists())) {
+      throw new Error("Cannot archive: roadmap file does not exist")
+    }
+
     const filePath = join(this.directory, ROADMAP_FILE)
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
     const archiveFilename = `roadmap.archive.${timestamp}.json`
@@ -117,9 +154,9 @@ export class RoadmapValidator {
   }
 
   static validateActionSequence(
-    actions: { number: string }[], 
+    actions: { number: string }[],
     globalSeenNumbers?: Set<string>,
-    featureNumber?: string
+    featureNumber?: string,
   ): ValidationError[] {
     const errors: ValidationError[] = []
     const seenNumbers = new Set<string>()
@@ -134,7 +171,7 @@ export class RoadmapValidator {
 
       // Check action-feature mismatch
       if (featureNumber) {
-        const actionFeaturePrefix = action.number.split('.')[0]
+        const actionFeaturePrefix = action.number.split(".")[0]
         if (actionFeaturePrefix !== featureNumber) {
           errors.push({
             code: "ACTION_FEATURE_MISMATCH",
@@ -166,9 +203,7 @@ export class RoadmapValidator {
     return errors
   }
 
-  static validateFeatureSequence(
-    features: { number: string; actions: { number: string }[] }[],
-  ): ValidationError[] {
+  static validateFeatureSequence(features: { number: string; actions: { number: string }[] }[]): ValidationError[] {
     const errors: ValidationError[] = []
     const seenNumbers = new Set<string>()
     const seenActionNumbers = new Set<string>()
@@ -234,18 +269,20 @@ export class RoadmapValidator {
   }
 
   static validateStatusProgression(currentStatus: string, newStatus: string): ValidationError | null {
-    const statusFlow = {
-      pending: ["in_progress", "completed"],
-      in_progress: ["completed"],
-      completed: [],
+    const validStatuses = ["pending", "in_progress", "completed", "cancelled"]
+
+    if (!validStatuses.includes(newStatus)) {
+      return {
+        code: "INVALID_STATUS",
+        message: `Invalid status "${newStatus}". Valid: ${validStatuses.join(", ")}`,
+      }
     }
 
-    const allowedTransitions = statusFlow[currentStatus as keyof typeof statusFlow] || []
-
-    if (!(allowedTransitions as string[]).includes(newStatus)) {
+    // Allow any transition except from cancelled (terminal state for abandoned work)
+    if (currentStatus === "cancelled") {
       return {
         code: "INVALID_STATUS_TRANSITION",
-        message: `Invalid transition from "${currentStatus}" to "${newStatus}". Allowed: ${allowedTransitions.length > 0 ? allowedTransitions.join(", ") : "None (terminal state)"}`,
+        message: `Cannot change status of cancelled action. Create a new action instead.`,
       }
     }
 

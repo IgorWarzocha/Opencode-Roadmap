@@ -1,6 +1,6 @@
 {
   "name": "@howaboua/opencode-roadmap-plugin",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Strategic roadmap planning and multi-agent coordination for OpenCode",
   "type": "module",
   "main": "./dist/index.js",
@@ -32,7 +32,6 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "typescript": "^5.0.0",
     "zod": "^3.22.0"
   },
   "scripts": {
@@ -40,6 +39,9 @@
     "copy-assets": "mkdir -p dist/src/descriptions dist/src/errors && cp src/descriptions/*.txt dist/src/descriptions/ && cp src/errors/*.txt dist/src/errors/",
     "lint": "eslint . --ext .ts",
     "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "opencode": {
     "type": "plugin",

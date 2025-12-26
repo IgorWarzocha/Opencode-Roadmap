@@ -1,8 +1,10 @@
-Update action status or description.
+Advance action state within the persisted roadmap.
 
-Constraints:
-1. Forward-only status: pending → in_progress → completed.
-2. Immutable IDs: Cannot change action numbers or move actions.
-3. Side Effect: Automatically archives roadmap file when ALL actions are completed.
+Statuses: pending, in_progress, completed, cancelled
+Transitions: Flexible (can revert if needed), except cancelled is terminal.
+
+Update after completing work on an action. When delegating to Task tool subagents, instruct them to call updateroadmap when they finish their assigned action.
+
+Archives roadmap automatically when all actions reach completed.
 
 Input: actionNumber (required), status (optional), description (optional).
