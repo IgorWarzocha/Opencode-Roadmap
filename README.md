@@ -1,4 +1,4 @@
-# @howaboua/opencode-roadmap-plugin
+# Opencode Roadmap Plugin
 
 Persistent project roadmaps for OpenCode. Coordinates work across sessions and parallel Task tool subagents.
 
@@ -11,6 +11,8 @@ This plugin solves both:
 - **Persists to disk** — survives restarts, available across sessions
 - **Shared context** — subagents read the same roadmap to understand the bigger picture
 - **Concurrent awareness** — agents see what's `in_progress` and avoid conflicts
+
+![opencode-roadmap](https://github.com/user-attachments/assets/e2479a72-ec65-457f-9503-bf2d01580c70)
 
 ## Installation
 
