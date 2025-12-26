@@ -43,19 +43,6 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
     },
     async execute(args) {
       const storage = new FileStorage(directory)
-      let roadmap: Roadmap
-      let isUpdate = false
-
-      if (await storage.exists()) {
-        const existing = await storage.read()
-        if (!existing) {
-          throw new Error("Existing roadmap file is corrupted. Please fix manually.")
-        }
-        roadmap = existing
-        isUpdate = true
-      } else {
-        roadmap = { features: [] }
-      }
 
       if (!args.features || args.features.length === 0) {
         throw new Error(
@@ -63,118 +50,123 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
         )
       }
 
-      const validationErrors: { message: string }[] = []
+      return await storage.update(async (current) => {
+        const roadmap: Roadmap = current ?? { features: [] }
+        const isUpdate = current !== null
+        const validationErrors: { message: string }[] = []
 
-      // First pass: structural validation of input
-      for (const feature of args.features) {
-        if (!feature.actions || feature.actions.length === 0) {
-          throw new Error(
-            `Feature "${feature.number}" must have at least one action. Each feature needs at least one action to be valid.`,
-          )
-        }
-
-        const titleError = RoadmapValidator.validateTitle(feature.title, "feature")
-        if (titleError) validationErrors.push(titleError)
-
-        const descError = RoadmapValidator.validateDescription(feature.description, "feature")
-        if (descError) validationErrors.push(descError)
-
-        for (const action of feature.actions) {
-          const actionTitleError = RoadmapValidator.validateTitle(action.description, "action")
-          if (actionTitleError) validationErrors.push(actionTitleError)
-        }
-      }
-
-      // Validate sequence consistency of input (internal consistency)
-      const sequenceErrors = RoadmapValidator.validateFeatureSequence(args.features)
-      validationErrors.push(...sequenceErrors)
-
-      if (validationErrors.length > 0) {
-        const errorMessages = validationErrors.map((err) => err.message).join("\n")
-        throw new Error(`Validation errors:\n${errorMessages}\n\nPlease fix these issues and try again.`)
-      }
-
-      // Merge Logic
-      for (const inputFeature of args.features) {
-        const existingFeature = roadmap.features.find((f: Feature) => f.number === inputFeature.number)
-
-        if (existingFeature) {
-          // Feature exists: Validate Immutability
-          if (
-            existingFeature.title !== inputFeature.title ||
-            existingFeature.description !== inputFeature.description
-          ) {
-            const msg = await getErrorMessage("immutable_feature", {
-              id: inputFeature.number,
-              oldTitle: existingFeature.title,
-              oldDesc: existingFeature.description,
-              newTitle: inputFeature.title,
-              newDesc: inputFeature.description,
-            })
-            throw new Error(msg)
+        // First pass: structural validation of input
+        for (const feature of args.features) {
+          if (!feature.actions || feature.actions.length === 0) {
+            throw new Error(
+              `Feature "${feature.number}" must have at least one action. Each feature needs at least one action to be valid.`,
+            )
           }
 
-          // Process Actions
-          for (const inputAction of inputFeature.actions) {
-            const existingAction = existingFeature.actions.find((a: Action) => a.number === inputAction.number)
-            if (existingAction) {
-              // Action exists: skip (immutable)
-              continue
-            } else {
-              // New Action: Append
-              existingFeature.actions.push({
-                number: inputAction.number,
-                description: inputAction.description,
-                status: inputAction.status,
+          const titleError = RoadmapValidator.validateTitle(feature.title, "feature")
+          if (titleError) validationErrors.push(titleError)
+
+          const descError = RoadmapValidator.validateDescription(feature.description, "feature")
+          if (descError) validationErrors.push(descError)
+
+          for (const action of feature.actions) {
+            const actionTitleError = RoadmapValidator.validateTitle(action.description, "action")
+            if (actionTitleError) validationErrors.push(actionTitleError)
+          }
+        }
+
+        // Validate sequence consistency of input (internal consistency)
+        const sequenceErrors = RoadmapValidator.validateFeatureSequence(args.features)
+        validationErrors.push(...sequenceErrors)
+
+        if (validationErrors.length > 0) {
+          const errorMessages = validationErrors.map((err) => err.message).join("\n")
+          throw new Error(`Validation errors:\n${errorMessages}\n\nPlease fix these issues and try again.`)
+        }
+
+        // Merge Logic
+        for (const inputFeature of args.features) {
+          const existingFeature = roadmap.features.find((f: Feature) => f.number === inputFeature.number)
+
+          if (existingFeature) {
+            // Feature exists: Validate Immutability
+            if (
+              existingFeature.title !== inputFeature.title ||
+              existingFeature.description !== inputFeature.description
+            ) {
+              const msg = await getErrorMessage("immutable_feature", {
+                id: inputFeature.number,
+                oldTitle: existingFeature.title,
+                oldDesc: existingFeature.description,
+                newTitle: inputFeature.title,
+                newDesc: inputFeature.description,
               })
-              // Sort actions to ensure order
-              existingFeature.actions.sort((a: Action, b: Action) => parseFloat(a.number) - parseFloat(b.number))
+              throw new Error(msg)
             }
+
+            // Process Actions
+            for (const inputAction of inputFeature.actions) {
+              const existingAction = existingFeature.actions.find((a: Action) => a.number === inputAction.number)
+              if (existingAction) {
+                // Action exists: skip (immutable)
+                continue
+              } else {
+                // New Action: Append
+                existingFeature.actions.push({
+                  number: inputAction.number,
+                  description: inputAction.description,
+                  status: inputAction.status,
+                })
+                // Sort actions to ensure order
+                existingFeature.actions.sort((a: Action, b: Action) => parseFloat(a.number) - parseFloat(b.number))
+              }
+            }
+          } else {
+            // New Feature: Append
+            roadmap.features.push({
+              number: inputFeature.number,
+              title: inputFeature.title,
+              description: inputFeature.description,
+              actions: inputFeature.actions.map((a: InputAction) => ({
+                number: a.number,
+                description: a.description,
+                status: a.status,
+              })),
+            })
           }
-        } else {
-          // New Feature: Append
-          roadmap.features.push({
-            number: inputFeature.number,
-            title: inputFeature.title,
-            description: inputFeature.description,
-            actions: inputFeature.actions.map((a: InputAction) => ({
-              number: a.number,
-              description: a.description,
-              status: a.status,
-            })),
-          })
         }
-      }
 
-      // Final Sort of Features
-      roadmap.features.sort((a: Feature, b: Feature) => parseInt(a.number) - parseInt(b.number))
+        // Final Sort of Features
+        roadmap.features.sort((a: Feature, b: Feature) => parseInt(a.number) - parseInt(b.number))
 
-      // Safety check: ensure no feature ended up with zero actions after merge
-      for (const feature of roadmap.features) {
-        if (feature.actions.length === 0) {
-          throw new Error(`Feature "${feature.number}" has no actions. This indicates a merge error.`)
+        // Safety check: ensure no feature ended up with zero actions after merge
+        for (const feature of roadmap.features) {
+          if (feature.actions.length === 0) {
+            throw new Error(`Feature "${feature.number}" has no actions. This indicates a merge error.`)
+          }
         }
-      }
 
-      // Final Validation of the Merged Roadmap
-      const finalErrors = RoadmapValidator.validateFeatureSequence(roadmap.features)
-      if (finalErrors.length > 0) {
-        throw new Error(`Resulting roadmap would be invalid:\n${finalErrors.map((e) => e.message).join("\n")}`)
-      }
+        // Final Validation of the Merged Roadmap
+        const finalErrors = RoadmapValidator.validateFeatureSequence(roadmap.features)
+        if (finalErrors.length > 0) {
+          throw new Error(`Resulting roadmap would be invalid:\n${finalErrors.map((e) => e.message).join("\n")}`)
+        }
 
-      await storage.write(roadmap)
+        const totalActions = roadmap.features.reduce((sum: number, feature: Feature) => sum + feature.actions.length, 0)
+        const action = isUpdate ? "Updated" : "Created"
+        const summary =
+          `${action} roadmap with ${roadmap.features.length} features and ${totalActions} actions:\n` +
+          roadmap.features
+            .map(
+              (feature: Feature) => `  Feature ${feature.number}: ${feature.title} (${feature.actions.length} actions)`,
+            )
+            .join("\n")
 
-      const totalActions = roadmap.features.reduce((sum: number, feature: Feature) => sum + feature.actions.length, 0)
-      const action = isUpdate ? "Updated" : "Created"
-      const summary =
-        `${action} roadmap with ${roadmap.features.length} features and ${totalActions} actions:\n` +
-        roadmap.features
-          .map(
-            (feature: Feature) => `  Feature ${feature.number}: ${feature.title} (${feature.actions.length} actions)`,
-          )
-          .join("\n")
-
-      return summary
+        return {
+          roadmap,
+          buildResult: () => summary,
+        }
+      })
     },
   })
 }

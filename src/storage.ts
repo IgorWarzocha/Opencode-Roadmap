@@ -3,6 +3,7 @@
  * Handles concurrent access via file locking and provides safe read/write operations.
  */
 import { promises as fs } from "fs"
+import type { Stats } from "fs"
 import { join } from "path"
 import { z } from "zod"
 import type { Roadmap, RoadmapStorage, ValidationError } from "./types.js"
@@ -12,6 +13,13 @@ const ROADMAP_FILE = "roadmap.json"
 const LOCK_FILE = `${ROADMAP_FILE}.lock`
 const LOCK_TIMEOUT_MS = 5000
 const LOCK_RETRY_MS = 50
+const LOCK_STALE_MS = 30000
+
+type UpdateResult<T> = {
+  roadmap: Roadmap
+  buildResult: (archiveName: string | null) => T
+  archive?: boolean
+}
 
 export class FileStorage implements RoadmapStorage {
   private readonly directory: string
@@ -30,6 +38,10 @@ export class FileStorage implements RoadmapStorage {
   }
 
   async read(): Promise<Roadmap | null> {
+    return this.readFromDisk()
+  }
+
+  private async readFromDisk(): Promise<Roadmap | null> {
     try {
       const filePath = join(this.directory, ROADMAP_FILE)
       const data = await fs.readFile(filePath, "utf-8")
@@ -70,10 +82,59 @@ export class FileStorage implements RoadmapStorage {
           await fs.unlink(lockPath).catch(() => {})
         }
       } catch {
-        await new Promise((r) => setTimeout(r, LOCK_RETRY_MS))
+        const isStale = await fs
+          .stat(lockPath)
+          .then((stat: Stats) => Date.now() - stat.mtimeMs > LOCK_STALE_MS)
+          .catch(() => false)
+        if (isStale) {
+          await fs.unlink(lockPath).catch(() => {})
+          continue
+        }
+        await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS))
       }
     }
     throw new Error("Could not acquire lock on roadmap file. Another operation may be in progress.")
+  }
+
+  private async fsyncDir(): Promise<void> {
+    const handle = await fs.open(this.directory, "r")
+    try {
+      await handle.sync()
+    } finally {
+      await handle.close().catch(() => {})
+    }
+  }
+
+  private async writeAtomic(filePath: string, data: string): Promise<void> {
+    const randomSuffix = Math.random().toString(36).slice(2, 8)
+    const tempPath = join(this.directory, `${ROADMAP_FILE}.tmp.${Date.now()}.${randomSuffix}`)
+    const handle = await fs.open(tempPath, "w")
+
+    try {
+      await handle.writeFile(data, "utf-8")
+      await handle.sync()
+      await handle.close()
+      await fs.rename(tempPath, filePath)
+      await this.fsyncDir()
+    } catch (error: unknown) {
+      await handle.close().catch(() => {})
+      await fs.unlink(tempPath).catch(() => {})
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error("Unknown error while writing roadmap")
+    }
+  }
+
+  private async archiveUnlocked(): Promise<string> {
+    const filePath = join(this.directory, ROADMAP_FILE)
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+    const archiveFilename = `roadmap.archive.${timestamp}.json`
+    const archivePath = join(this.directory, archiveFilename)
+
+    await fs.rename(filePath, archivePath)
+    await this.fsyncDir()
+    return archiveFilename
   }
 
   async write(roadmap: Roadmap): Promise<void> {
@@ -81,21 +142,27 @@ export class FileStorage implements RoadmapStorage {
 
     const unlock = await this.acquireLock()
     try {
+      const data = JSON.stringify(roadmap, null, 2)
       const filePath = join(this.directory, ROADMAP_FILE)
-      const randomSuffix = Math.random().toString(36).slice(2, 8)
-      const tempPath = join(this.directory, `${ROADMAP_FILE}.tmp.${Date.now()}.${randomSuffix}`)
+      await this.writeAtomic(filePath, data)
+    } finally {
+      await unlock()
+    }
+  }
 
-      try {
-        const data = JSON.stringify(roadmap, null, 2)
-        await fs.writeFile(tempPath, data, "utf-8")
-        await fs.rename(tempPath, filePath)
-      } catch (error: unknown) {
-        await fs.unlink(tempPath).catch(() => {})
-        if (error instanceof Error) {
-          throw error
-        }
-        throw new Error("Unknown error while writing roadmap")
-      }
+  async update<T>(fn: (current: Roadmap | null) => Promise<UpdateResult<T>> | UpdateResult<T>): Promise<T> {
+    await fs.mkdir(this.directory, { recursive: true }).catch(() => {})
+
+    const unlock = await this.acquireLock()
+    try {
+      const current = await this.readFromDisk()
+      const outcome = await fn(current)
+      const data = JSON.stringify(outcome.roadmap, null, 2)
+      const filePath = join(this.directory, ROADMAP_FILE)
+      await this.writeAtomic(filePath, data)
+
+      const archiveName = outcome.archive ? await this.archiveUnlocked() : null
+      return outcome.buildResult(archiveName)
     } finally {
       await unlock()
     }
@@ -106,13 +173,12 @@ export class FileStorage implements RoadmapStorage {
       throw new Error("Cannot archive: roadmap file does not exist")
     }
 
-    const filePath = join(this.directory, ROADMAP_FILE)
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
-    const archiveFilename = `roadmap.archive.${timestamp}.json`
-    const archivePath = join(this.directory, archiveFilename)
-
-    await fs.rename(filePath, archivePath)
-    return archiveFilename
+    const unlock = await this.acquireLock()
+    try {
+      return await this.archiveUnlocked()
+    } finally {
+      await unlock()
+    }
   }
 }
 
@@ -282,7 +348,7 @@ export class RoadmapValidator {
     if (currentStatus === "cancelled") {
       return {
         code: "INVALID_STATUS_TRANSITION",
-        message: `Cannot change status of cancelled action. Create a new action instead.`,
+        message: "Cannot change status of cancelled action. Create a new action instead.",
       }
     }
 
