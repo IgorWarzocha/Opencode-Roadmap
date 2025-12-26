@@ -1,6 +1,6 @@
 {
   "name": "@howaboua/opencode-roadmap-plugin",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Strategic roadmap planning and multi-agent coordination for OpenCode",
   "type": "module",
   "main": "./dist/index.js",

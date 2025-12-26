@@ -3,8 +3,8 @@ Advance action state within the persisted roadmap.
 Statuses: pending, in_progress, completed, cancelled
 Transitions: Flexible (can revert if needed), except cancelled is terminal.
 
-Update after completing work on an action. When delegating to Task tool subagents, explicitly instruct them to call updateroadmap at start (set in_progress) and at finish (set completed with a short note).
+Use after completing work on an action. When delegating to Task tool subagents, explicitly instruct them to call updateroadmap at start (set in_progress) and at finish (set completed with a short note).
 
 Archives roadmap automatically when all actions reach completed.
 
-Input: actionNumber (required), status (optional), description (optional).
+Input: actionNumber (required), note (required), status (optional), description (optional).

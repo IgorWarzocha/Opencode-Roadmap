@@ -3,7 +3,8 @@
  * Enforces forward-only status progression and archives when complete.
  */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
-import { FileStorage, RoadmapValidator } from "../storage.js"
+import { FileStorage } from "../storage.js"
+import { RoadmapValidator } from "../validators.js"
 import type { Action } from "../types.js"
 import { loadDescription } from "../descriptions/index.js"
 
@@ -22,6 +23,7 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         .enum(["pending", "in_progress", "completed", "cancelled"])
         .optional()
         .describe("New action status. Flexible transitions allowed except from cancelled."),
+      note: tool.schema.string().describe("Required update note to append to the action."),
     },
     async execute(args) {
       const storage = new FileStorage(directory)
@@ -31,11 +33,12 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         throw new Error(`${actionNumberError.message} Use ReadRoadmap to see valid action numbers.`)
       }
 
-      return await storage.update((roadmap) => {
-        if (!roadmap) {
+      return await storage.update((document) => {
+        if (!document) {
           throw new Error("Roadmap not found. Use CreateRoadmap to create one.")
         }
 
+        const roadmap = document.roadmap
         let targetAction: { status: string; description: string } | null = null
         let targetFeature: {
           number: string
@@ -68,6 +71,11 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
           throw new Error("No changes specified. Please provide description and/or status.")
         }
 
+        const noteError = RoadmapValidator.validateDescription(args.note, "action")
+        if (noteError) {
+          throw new Error(`${noteError.message}`)
+        }
+
         const oldStatus = targetAction.status
         const oldDescription = targetAction.description
 
@@ -79,6 +87,8 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
           }
           targetAction.description = args.description
         }
+
+        targetAction.description = `${targetAction.description} (note: ${args.note})`
 
         // Validate and update status if provided
         if (args.status !== undefined) {
@@ -98,10 +108,17 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         if (args.status !== undefined && oldStatus !== args.status) {
           changes.push(`status: "${oldStatus}" → "${args.status}"`)
         }
+        if (oldDescription !== targetAction.description) {
+          changes.push("note added")
+        }
 
         if (changes.length === 0) {
           return {
-            roadmap,
+            document: {
+              feature: document.feature,
+              spec: document.spec,
+              roadmap,
+            },
             buildResult: () => `Action ${args.actionNumber} unchanged. Provided values match current state.`,
           }
         }
@@ -131,7 +148,11 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         }
 
         return {
-          roadmap,
+          document: {
+            feature: document.feature,
+            spec: document.spec,
+            roadmap,
+          },
           archive: allCompleted,
           buildResult: (archiveName) => {
             const archiveMsg = archiveName ? `\n\nAll actions completed! Roadmap archived to "${archiveName}".` : ""

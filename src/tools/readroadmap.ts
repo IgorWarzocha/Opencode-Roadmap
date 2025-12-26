@@ -3,7 +3,8 @@
  * Supports filtering by feature or action number.
  */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
-import { FileStorage, RoadmapValidator } from "../storage.js"
+import { FileStorage } from "../storage.js"
+import { RoadmapValidator } from "../validators.js"
 import type { Action, Feature } from "../types.js"
 import { loadDescription } from "../descriptions/index.js"
 
@@ -29,10 +30,12 @@ export async function createReadRoadmapTool(directory: string): Promise<ToolDefi
         throw new Error("Roadmap not found. Use CreateRoadmap to create one.")
       }
 
-      const roadmap = await storage.read()
-      if (!roadmap) {
-        throw new Error("Roadmap file is corrupted. Please fix manually.")
+      const document = await storage.read()
+      if (!document) {
+        throw new Error("Roadmap data is corrupted. Please fix manually.")
       }
+
+      const roadmap = document.roadmap
 
       if (args.actionNumber && args.featureNumber) {
         throw new Error(
@@ -107,6 +110,8 @@ export async function createReadRoadmapTool(directory: string): Promise<ToolDefi
       let output =
         `Project Roadmap Overview\n` +
         `========================\n` +
+        `Feature: ${document.feature}\n` +
+        `Spec:\n${document.spec}\n\n` +
         `Features: ${roadmap.features.length}\n` +
         `Total Actions: ${totalActions}\n` +
         `Progress: ${completedActions} completed, ${inProgressActions} in progress, ${pendingActions} pending\n\n`
