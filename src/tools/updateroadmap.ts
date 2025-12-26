@@ -3,7 +3,8 @@
  * Enforces forward-only status progression and archives when complete.
  */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
-import { FileStorage, RoadmapValidator } from "../storage.js"
+import { FileStorage } from "../storage.js"
+import { RoadmapValidator } from "../validators.js"
 import type { Action } from "../types.js"
 import { loadDescription } from "../descriptions/index.js"
 
@@ -31,11 +32,12 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         throw new Error(`${actionNumberError.message} Use ReadRoadmap to see valid action numbers.`)
       }
 
-      return await storage.update((roadmap) => {
-        if (!roadmap) {
+      return await storage.update((document) => {
+        if (!document) {
           throw new Error("Roadmap not found. Use CreateRoadmap to create one.")
         }
 
+        const roadmap = document.roadmap
         let targetAction: { status: string; description: string } | null = null
         let targetFeature: {
           number: string
@@ -101,7 +103,11 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
 
         if (changes.length === 0) {
           return {
-            roadmap,
+            document: {
+              feature: document.feature,
+              spec: document.spec,
+              roadmap,
+            },
             buildResult: () => `Action ${args.actionNumber} unchanged. Provided values match current state.`,
           }
         }
@@ -131,7 +137,11 @@ export async function createUpdateRoadmapTool(directory: string): Promise<ToolDe
         }
 
         return {
-          roadmap,
+          document: {
+            feature: document.feature,
+            spec: document.spec,
+            roadmap,
+          },
           archive: allCompleted,
           buildResult: (archiveName) => {
             const archiveMsg = archiveName ? `\n\nAll actions completed! Roadmap archived to "${archiveName}".` : ""

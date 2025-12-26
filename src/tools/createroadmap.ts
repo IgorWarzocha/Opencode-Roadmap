@@ -3,7 +3,8 @@
  * Supports merge logic for adding new features/actions to existing roadmaps.
  */
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
-import { FileStorage, RoadmapValidator } from "../storage.js"
+import { FileStorage } from "../storage.js"
+import { RoadmapValidator } from "../validators.js"
 import type { Action, Feature, Roadmap } from "../types.js"
 import { loadDescription } from "../descriptions/index.js"
 import { getErrorMessage } from "../errors/loader.js"
@@ -20,6 +21,8 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
   return tool({
     description,
     args: {
+      feature: tool.schema.string().describe("Short feature label for the roadmap"),
+      spec: tool.schema.string().describe("Overall spec and goals in natural language"),
       features: tool.schema
         .array(
           tool.schema.object({
@@ -44,16 +47,34 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
     async execute(args) {
       const storage = new FileStorage(directory)
 
+      const featureError = RoadmapValidator.validateTitle(args.feature, "feature")
+      if (featureError) {
+        throw new Error(featureError.message)
+      }
+
+      const specError = RoadmapValidator.validateDescription(args.spec, "feature")
+      if (specError) {
+        throw new Error(specError.message)
+      }
+
       if (!args.features || args.features.length === 0) {
         throw new Error(
-          'Roadmap must have at least one feature with at least one action. Example: {"features": [{"number": "1", "title": "Feature 1", "description": "Description", "actions": [{"number": "1.01", "description": "Action 1", "status": "pending"}]}]}',
+          'Roadmap must have at least one feature with at least one action. Example: {"feature":"Core","spec":"Project goals...","features": [{"number": "1", "title": "Feature 1", "description": "Description", "actions": [{"number": "1.01", "description": "Action 1", "status": "pending"}]}]}',
         )
       }
 
       return await storage.update(async (current) => {
-        const roadmap: Roadmap = current ?? { features: [] }
+        const roadmap: Roadmap = current ? current.roadmap : { features: [] }
         const isUpdate = current !== null
         const validationErrors: { message: string }[] = []
+
+        if (current && current.feature !== args.feature) {
+          throw new Error("Feature label does not match existing roadmap.")
+        }
+
+        if (current && current.spec !== args.spec) {
+          throw new Error("Spec does not match existing roadmap.")
+        }
 
         // First pass: structural validation of input
         for (const feature of args.features) {
@@ -163,7 +184,11 @@ export async function createCreateRoadmapTool(directory: string): Promise<ToolDe
             .join("\n")
 
         return {
-          roadmap,
+          document: {
+            feature: args.feature,
+            spec: args.spec,
+            roadmap,
+          },
           buildResult: () => summary,
         }
       })

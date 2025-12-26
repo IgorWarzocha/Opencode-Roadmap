@@ -25,9 +25,15 @@ export const Roadmap = z.object({
 })
 export type Roadmap = z.infer<typeof Roadmap>
 
+export type RoadmapDocument = {
+  feature: string
+  spec: string
+  roadmap: Roadmap
+}
+
 export interface RoadmapStorage {
-  read(): Promise<Roadmap | null>
-  write(roadmap: Roadmap): Promise<void>
+  read(): Promise<RoadmapDocument | null>
+  write(document: RoadmapDocument): Promise<void>
   exists(): Promise<boolean>
   archive(): Promise<string>
 }
@@ -44,6 +50,8 @@ export interface ValidationResult {
 }
 
 export interface CreateRoadmapInput {
+  feature: string
+  spec: string
   features: {
     number: string
     title: string

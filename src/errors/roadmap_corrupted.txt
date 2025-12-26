@@ -1,1 +1,1 @@
-Roadmap file is corrupted or unreadable. Ask user to check roadmap.json file.
+Roadmap data is corrupted or unreadable. Ask user to recreate the roadmap.
