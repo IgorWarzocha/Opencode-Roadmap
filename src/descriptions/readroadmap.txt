@@ -2,7 +2,7 @@ Load the persisted roadmap from disk to understand project state.
 
 When to use:
 1. Before starting a major feature - read roadmap first, then plan immediate steps with todowrite
-2. When launching Task tool subagents - instruct them to call readroadmap to understand their assigned work
+2. When launching Task tool subagents - explicitly instruct them to call readroadmap before doing any work, then updateroadmap when they start and finish
 3. To check overall progress across features
 
 Concurrent work awareness:

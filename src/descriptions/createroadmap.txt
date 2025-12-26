@@ -5,7 +5,7 @@ Use when:
 - Work will be delegated to Task tool subagents that need shared context
 - Deliverables group naturally into distinct features
 
-When launching Task tool subagents, instruct them to call readroadmap first to understand their work within the broader plan.
+When launching Task tool subagents, explicitly instruct them to: (1) call readroadmap first, and (2) call updateroadmap to mark their action in_progress at start and completed at finish with a short note.
 
 Structure: Features contain Actions. IDs are immutable once created.
 
