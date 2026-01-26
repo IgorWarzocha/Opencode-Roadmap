@@ -6,16 +6,11 @@ This plugin adds structure to your development workflow with reusable specificat
 
 ## Why This Plugin
 
-**For developers:**
+- Enables planning with any and all agents
 - Organize work into reusable specs and actionable plans
 - Track progress with clear status (active/done)
 - Maintain project-wide standards that apply across all work
-
-**For AI agents:**
 - Automatically receive `<available_plans>` in the system prompt with all plan names and descriptions
-- Read context-rich plans before starting work
-- Follow consistent constraints from linked specs
-- Understand what's done and what's active
 
 ## Tools
 
@@ -24,6 +19,8 @@ This plugin adds structure to your development workflow with reusable specificat
 - **`append_spec`** - Link an existing spec to a plan
 - **`read_plan`** - Read a plan with all linked spec content expanded inline
 - **`mark_plan_done`** - Mark a plan as complete
+
+![opencode-roadmap](https://github.com/user-attachments/assets/e2479a72-ec65-457f-9503-bf2d01580c70)
 
 ## Installation
 
