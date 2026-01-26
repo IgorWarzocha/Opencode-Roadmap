@@ -1,9 +1,5 @@
 node_modules/
-*.js
-!index.js
-!hooks/index.js
-!tools/index.js
+dist/
 *.d.ts
 .DS_Store
 bun.lock
-dist/
