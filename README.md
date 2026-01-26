@@ -29,7 +29,7 @@ Add to your `opencode.json`:
 ```json
 {
   "plugins": [
-    "@howaboua/opencode-planning-toolkit"
+    "@howaboua/opencode-planning-toolkit@latest"
   ]
 }
 ```
