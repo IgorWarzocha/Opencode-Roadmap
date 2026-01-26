@@ -1,0 +1,13 @@
+{
+  "name": "@howaboua/opencode-planning-toolkit",
+  "version": "0.0.1",
+  "description": "Study Plan plugin for OpenCode",
+  "main": "index.ts",
+  "dependencies": {
+    "@opencode-ai/plugin": "latest"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}
