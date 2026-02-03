@@ -9,10 +9,7 @@ import { createTools } from "./tools"
 import { systemHooks } from "./hooks"
 
 export const PlanPlugin: Plugin = async (ctx) => {
-  const skillsHook = createBundledSkillsHook()
-  const config: Hooks["config"] = async (value) => {
-    await skillsHook.config?.(value)
-  }
+  const { config } = createBundledSkillsHook()
 
   return {
     config,

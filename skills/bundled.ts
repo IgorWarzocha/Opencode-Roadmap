@@ -45,10 +45,8 @@ const registerSkillPaths = (config: Config, paths: string[]) => {
   config.skill ??= {}
   config.skill.paths ??= []
 
-  for (const skillPath of paths) {
-    if (!config.skills.paths.includes(skillPath)) config.skills.paths.push(skillPath)
-    if (!config.skill.paths.includes(skillPath)) config.skill.paths.push(skillPath)
-  }
+  config.skills.paths = [...new Set([...config.skills.paths, ...paths])]
+  config.skill.paths = [...new Set([...config.skill.paths, ...paths])]
 }
 
 export const createBundledSkillsHook = (): Pick<Hooks, "config"> => {
