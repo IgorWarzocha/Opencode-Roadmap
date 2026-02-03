@@ -1,11 +1,12 @@
 {
   "name": "@howaboua/opencode-planning-toolkit",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Comprehensive planning toolkit for OpenCode: manage specifications, track study plans, and automate roadmaps.",
-  "main": "index.ts",
+  "main": "dist/index.js",
   "type": "module",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r skills dist/",
     "watch": "tsc --watch",
     "clean": "find . -name '*.js' ! -path './node_modules/*' -delete && find . -name '*.d.ts' ! -path './node_modules/*' -delete",
     "lint": "tsc --noEmit"
@@ -24,6 +25,12 @@
     "type": "git",
     "url": "git+https://github.com/IgorWarzocha/opencode-planning-toolkit.git"
   },
+  "files": [
+    "dist",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "@opencode-ai/plugin": "latest"
   },
