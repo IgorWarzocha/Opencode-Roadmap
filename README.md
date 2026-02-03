@@ -11,6 +11,7 @@ This plugin adds structure to your development workflow with reusable specificat
 - Track progress with clear status (active/done)
 - Maintain project-wide standards that apply across all work
 - Automatically receive `<available_plans>` in the system prompt with all plan names and descriptions
+- **Bundled skill** automatically loads to guide agents through proper planning workflow
 
 ## Tools
 
@@ -21,6 +22,23 @@ This plugin adds structure to your development workflow with reusable specificat
 - **`mark_plan_done`** - Mark a plan as complete
 
 ![opencode-roadmap](https://github.com/user-attachments/assets/e2479a72-ec65-457f-9503-bf2d01580c70)
+
+## Bundled Skill
+
+This plugin includes a **bundled skill** (`plans-and-specs`) that automatically loads with the plugin. The skill provides agents with:
+
+- Clear workflow instructions for creating plans and specs
+- Proper order of operations (create plan → append REPO specs → ask about FEATURE specs)
+- Instructions to check for existing plans before creating new ones
+- Guidance on when to use each tool
+
+**When agents use it:**
+- User asks to create a plan, roadmap, or break down work
+- User mentions specs, requirements, or standards documentation
+- User references existing plans that need reading or updating
+- User asks to mark work complete or link requirements
+
+The skill ensures agents follow best practices automatically without manual prompting.
 
 ## Installation
 
@@ -76,7 +94,7 @@ The agent creates `docs/plans/user-auth.md`:
 ```markdown
 ---
 plan name: user-auth
-plan description: Add JWT-based authentication
+plan description: JWT authentication for API
 plan status: active
 ---
 
@@ -94,6 +112,10 @@ Add secure JWT authentication to the API with login, logout, and token refresh.
 <!-- SPECS_START -->
 <!-- SPECS_END -->
 ```
+
+**Agent automatically:**
+1. Links any existing REPO scope specs
+2. Asks if you want a FEATURE spec for this plan
 
 ### 3. Link Specs to Plans
 
